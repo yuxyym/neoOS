@@ -5,9 +5,10 @@ import * as wm from './wm.js';
 import { alert as showAlert } from './dialogs.js';
 import { initNotifications } from './notifications.js';
 import { soundsEnabled, setSoundsEnabled } from './sound.js';
+import * as host from './host.js';
 
-const DEFAULT_DOCK = ['org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.calendar', 'org.neoos.calculator', 'org.neoos.settings'];
-const DESKTOP_ICONS = ['org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.terminal', 'org.neoos.settings'];
+const DEFAULT_DOCK = ['org.neoos.browser', 'org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.calendar', 'org.neoos.calculator', 'org.neoos.settings'];
+const DESKTOP_ICONS = ['org.neoos.browser', 'org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.terminal', 'org.neoos.settings'];
 const el = (tag, cls = '', text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const avatar = u => { const a = el('span', 'neo-avatar', (u.displayName || u.username || '?')[0]); a.style.background = `hsl(${hue(u.username)} 52% 46%)`; return a; };
@@ -126,20 +127,20 @@ function renderDock() {
 }
 
 /* ---------- panel and quick settings ---------- */
-const logoSrc = () => (document.documentElement.dataset.theme === 'light' ? 'branding/neoicon.png' : 'branding/neoiconwhite.png');
+const logoSrc = () => (document.documentElement.dataset.theme !== 'dark' ? 'branding/neoicon.png' : 'branding/neoiconwhite.png');
 function openQuick(btn) {
   if (skipToggle === btn) { skipToggle = null; return; }
   closeMenus();
   const m = el('div', 'neo-ctx neo-pop'), head = el('div', 'neo-pop__user'), info = el('div');
   info.append(el('strong', '', me.displayName || me.username), el('div', 'u-muted', `@${me.username} · ${me.role}`)); head.append(avatar(me), info);
   const seg = (labels, current, onPick) => { const s = el('div', 'neo-segmented'); for (const [value, label] of labels) { const b = el('button', value === current ? 'is-active' : '', label); b.type = 'button'; b.onclick = () => { onPick(value); s.querySelectorAll('button').forEach(x => x.classList.toggle('is-active', x === b)); }; s.append(b); } return s; };
-  const themeRow = el('div', 'neo-pop__row'); themeRow.append(el('span', '', 'Appearance'), seg([['dark', 'Dark'], ['light', 'Light']], syscalls['theme.get'].fn(), v => syscalls['theme.set'].fn({ user: me }, v)));
   const soundRow = el('div', 'neo-pop__row'); soundRow.append(el('span', '', 'System sounds'), seg([[true, 'On'], [false, 'Off']], soundsEnabled(), v => setSoundsEnabled(v)));
   const item = (label, action) => { const b = el('button', 'neo-ctx__item', label); b.type = 'button'; b.onclick = () => { closeMenus(); action(); }; return b; };
-  m.append(head, themeRow, soundRow, el('div', 'neo-ctx__sep'));
+  m.append(head, soundRow, el('div', 'neo-ctx__sep'));
   if (registry.has('org.neoos.settings')) m.append(item('Settings…', () => startApp('org.neoos.settings')));
   if (registry.has('org.neoos.system-monitor')) m.append(item('System Monitor…', () => startApp('org.neoos.system-monitor')));
   m.append(item('Lock screen', lock));
+  if (host.available) m.append(item('Quit neoOS', () => host.call('host:quit')));
   m.style.top = '36px'; m.style.right = '8px'; document.body.append(m); ctx = m; ctxOwner = btn; btn.setAttribute('aria-expanded', 'true');
 }
 async function lock() {

@@ -46,11 +46,10 @@ function icon(e){const wrap=document.createElement('span');if(e.type==='director
 const size=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KB`:`${(n/1048576).toFixed(1)} MB`;
 const kind=e=>e.type==='directory'?'Folder':ext(e.name)?`${ext(e.name).toUpperCase()} file`:'File';
 const dir=p=>p.slice(0,p.lastIndexOf('/'))||'/';
-function placesUI(){const items=[['Home','/','⌂'],['Documents','/Documents','▤'],['Pictures','/Pictures','▣']];
- $('places').replaceChildren(Object.assign(document.createElement('div'),{className:'neo-sidebar__label',textContent:'Places'}),...items.map(([n,p,g])=>{const b=document.createElement('button');b.className='neo-sidebar__item'+(S.path===p&&!searching?' is-active':'');b.textContent=`${g}  ${n}`;b.onclick=()=>send('go',{path:p});return b}))}
-function crumbsUI(){const parts=S.path.split('/').filter(Boolean),c=[];const add=(l,p)=>{const b=document.createElement('button');b.textContent=l;b.onclick=()=>send('go',{path:p});c.push(b)};
- add('Home','/');let acc='';for(const p of parts){acc+='/'+p;c.push(Object.assign(document.createElement('span'),{textContent:'›'}));add(p,acc)}
- if(searching){c.push(Object.assign(document.createElement('span'),{textContent:'›  Search results'}))}$('crumbs').replaceChildren(...c)}
+function placesUI(){$('places').replaceChildren(Object.assign(document.createElement('div'),{className:'neo-sidebar__label',textContent:'Places'}),...(S.places||[]).map(p=>{const b=document.createElement('button');b.className='neo-sidebar__item'+(S.path===p.path&&!searching?' is-active':'');b.textContent=`${p.glyph}  ${p.name}`;b.onclick=()=>send('go',{path:p.path});return b}))}
+function crumbsUI(){const parts=S.path.split('/').filter(Boolean),c=[],sep=()=>Object.assign(document.createElement('span'),{textContent:'›'});const add=(l,p)=>{const b=document.createElement('button');b.textContent=l;b.onclick=()=>send('go',{path:p});c.push(b)};
+ add('▥','/');let acc='';for(const p of parts){acc+='/'+p;c.push(sep());add(p,acc)}
+ if(searching)c.push(Object.assign(document.createElement('span'),{textContent:'›  Search results'}));$('crumbs').replaceChildren(...c);$('crumbs').scrollLeft=1e6}
 function row(e){const r=document.createElement('div');r.className='row'+(sel?.path===e.path?' is-sel':'')+(S.clipboard?.move&&S.clipboard.path===e.path?' is-cut':'');r.dataset.path=e.path;r.setAttribute('role','option');
  const n=document.createElement('div');n.className='name';const b=document.createElement('b');b.textContent=e.name;n.append(icon(e),b);
  if(searching){const s=document.createElement('small');s.className='cell';s.textContent=dir(e.path);n.append(s)}
@@ -66,7 +65,7 @@ function render(){placesUI();crumbsUI();const l=$('list');
 function menu(x,y,onItem){const c=$('ctx');c.replaceChildren();const add=(l,fn,dis)=>{const b=document.createElement('button');b.textContent=l;b.disabled=!!dis;b.onclick=()=>{c.hidden=true;fn()};c.append(b)},sep=()=>c.append(document.createElement('hr'));
  const it=sel&&onItem?{path:sel.path,type:sel.type,mime:sel.mime}:null;
  if(it){add('Open',()=>send('open',it));if(sel.type==='file')add('Open with…',()=>send('open-with',it));sep();add('Cut',()=>send('cut',it));add('Copy',()=>send('copy',it));add('Rename',startRename);add('Delete',()=>send('delete',it));sep()}
- add('New folder',()=>send('new-folder'),searching);add('New text file',()=>send('new-file'),searching);add('Paste',()=>send('paste'),!S.canPaste||searching);sep();add(S.showHidden?'Hide hidden files':'Show hidden files',()=>send('toggle-hidden'));add('Refresh',()=>send('refresh'));
+ add('Open terminal here',()=>send('terminal',{path:sel&&onItem&&sel.type==='directory'?sel.path:S.path}));add('New folder',()=>send('new-folder'),searching);add('New text file',()=>send('new-file'),searching);add('Paste',()=>send('paste'),!S.canPaste||searching);sep();add(S.showHidden?'Hide hidden files':'Show hidden files',()=>send('toggle-hidden'));add('Refresh',()=>send('refresh'));
  c.hidden=false;c.style.left=Math.min(x,innerWidth-c.offsetWidth-4)+'px';c.style.top=Math.min(y,innerHeight-c.offsetHeight-4)+'px'}
 function startRename(){if(!sel||searching)return;const r=[...document.querySelectorAll('.row')].find(x=>x.dataset.path===sel.path);if(!r)return;const n=r.querySelector('.name'),b=n.querySelector('b'),i=document.createElement('input');i.className='neo-input';i.value=sel.name;b.replaceWith(i);i.focus();const d=sel.name.lastIndexOf('.');i.setSelectionRange(0,d>0&&sel.type==='file'?d:sel.name.length);
  const path=sel.path;let done=false;const finish=ok=>{if(done)return;done=true;if(ok)send('rename',{path,name:i.value});else render()};i.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')finish(true);if(e.key==='Escape')finish(false)};i.onblur=()=>finish(true);i.onclick=e=>e.stopPropagation();i.ondblclick=e=>e.stopPropagation()}

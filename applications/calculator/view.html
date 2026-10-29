@@ -12,7 +12,7 @@ body{height:100vh;padding:12px;display:flex;flex-direction:column;gap:10px;backg
 <div class="screen" aria-live="polite"><div id="expr" class="expr"></div><div id="out" class="out">0</div></div>
 <div class="keys" id="keys"></div>
 <script>
-let ex='';const $=id=>document.getElementById(id);
+let ex='',fresh=false;const $=id=>document.getElementById(id);
 const KEYS=['AC','⌫','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','±','0','.','='];
 function evaluate(src){const n=src.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\s/g,'');const tk=n.match(/(?:\d*\.\d+|\d+\.?\d*)|[()+\-*/%]/g)||[];if(!tk.length||tk.join('')!==n)throw Error('Invalid expression');let i=0;
  function atom(){const t=tk[i++];let v;if(t==='('){v=sum();if(tk[i++]!==')')throw Error('Missing )')}else if(t==='-')return -atom();else if(t==='+')return atom();else{v=Number(t);if(!Number.isFinite(v))throw Error('Invalid expression')}while(tk[i]==='%'){i++;v/=100}return v}
@@ -21,11 +21,11 @@ function evaluate(src){const n=src.replace(/×/g,'*').replace(/÷/g,'/').replace
  const r=sum();if(i!==tk.length||!Number.isFinite(r))throw Error('Invalid expression');return String(Number(r.toPrecision(12)))}
 function show(){$('expr').textContent=ex;let p='';try{if(/[+\-×÷−%]/.test(ex.replace(/^-/,'')))p=evaluate(ex)}catch{}$('out').textContent=p||ex||'0'}
 function press(k){
- if(ex==='Error')ex='';
+ if(ex==='Error')ex='';const was=fresh;fresh=false;
  if(k==='AC')ex='';else if(k==='⌫')ex=ex.slice(0,-1);
- else if(k==='='){try{ex=evaluate(ex||'0')}catch{ex='Error'}}
+ else if(k==='='){try{ex=evaluate(ex||'0');fresh=true}catch{ex='Error'}}
  else if(k==='±')ex=ex.startsWith('-')?ex.slice(1):'-'+ex;
- else ex+=k;show()}
+ else{if(was&&/[\d.(]/.test(k))ex='';ex+=k}show()}
 KEYS.forEach(k=>{const b=document.createElement('button');b.className=k==='='?'eq':/[÷×−+%]/.test(k)?'op':/\d|\./.test(k)?'num':'';b.textContent=k;b.tabIndex=-1;b.onmousedown=e=>e.preventDefault();b.onclick=()=>press(k);$('keys').append(b)});
 const MAP={'*':'×','/':'÷','-':'−'};
 addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;let k=e.key;

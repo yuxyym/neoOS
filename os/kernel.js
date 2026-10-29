@@ -1,12 +1,15 @@
 // Kernel: app registry, process table, syscall table, permission checks, bridge.
 // Each app's `main` runs in a hidden sandboxed iframe (opaque origin). The kernel loads all files itself.
+// Host integration (real file system, terminal, system info) goes through os/host.js and is reachable only via permission-checked syscalls.
 import * as wm from './wm.js';
 import * as vfs from './vfs.js';
+import * as host from './host.js';
 import { openFilePicker } from './file-picker.js';
 import { alert as showAlert, confirm as showConfirm, choose as showChoose } from './dialogs.js';
 import * as accounts from './accounts.js';
 export const API_VERSION = '1.0';
 export class NeoError extends Error { constructor(code, message) { super(message); this.code = code; } }
+export const THEMES = ['metro']; // single built-in look; not user-selectable
 const subs = {};
 export const bus = { on: (e, f) => (subs[e] ??= []).push(f), emit: (e, p) => (subs[e] || []).forEach(f => f(p)) };
 export const journal = [];
@@ -15,7 +18,7 @@ export function log(level, src, msg) { journal.push({ t: Date.now(), level, src,
 export const registry = new Map(), procs = new Map();
 let nextPid = 1, sdk, shim, css;
 export let currentUser = null;
-let theme = (() => { try { return localStorage.getItem('neoos.theme') || 'dark'; } catch { return 'dark'; } })();
+let theme = 'metro';
 const t = u => fetch(u).then(r => { if (!r.ok) throw new NeoError('ENOENT', 'Cannot load ' + u); return r.text(); });
 const esc = s => s.replace(/<\/script/gi, '<\\/script');
 async function inlineAppAssets(base, html) {
@@ -53,25 +56,26 @@ function validateManifest(m) {
   return { ...m, exitWhenLastWindowCloses: m.exitWhenLastWindowCloses !== false };
 }
 
+// Terminal sessions: pty id -> owning pid. Output that arrives before the owner is registered is held briefly.
+const ptyOwner = new Map(), ptyBacklog = new Map();
+
 export async function init() {
   await vfs.init();
   document.documentElement.dataset.theme = theme; wm.setTheme(theme);
-  const [idx, a, b, c] = await Promise.all([t('os/apps.index.json').then(JSON.parse), t('sdk/neo-sdk.js'), t('sdk/neo-frame.js'), t('neoui/neoui.css')]);
-  [sdk, shim, css] = [a, b, c];
+  const [idx, a, b, c, r] = await Promise.all([t('os/apps.index.json').then(JSON.parse), t('sdk/neo-sdk.js'), t('sdk/neo-frame.js'), t('neoui/neoui.css'), t('neoui/retro.css')]);
+  [sdk, shim, css] = [a, b, c + '\n' + r];
   for (const dir of idx) {
     try { const base = `applications/${dir}/`; const manifest = validateManifest(JSON.parse(await t(base + 'manifest.json'))); registry.set(manifest.id, { manifest, base }); }
     catch (e) { log('error', 'init', `bad app ${dir}: ${e.message}`); }
   }
-  for (const dir of idx) {
-    const app = [...registry.values()].find(a => a.base === `applications/${dir}/`); if (!app) continue;
-    const files = [['manifest.json', JSON.stringify(app.manifest, null, 2)]];
-    for (const file of [app.manifest.main, app.manifest.icon, 'view.html']) {
-      if (files.some(entry => entry[0] === file)) continue;
-      try { files.push([file, await t(app.base + file), file.endsWith('.svg') ? 'image/svg+xml' : file.endsWith('.html') ? 'text/html' : 'text/javascript']); } catch {}
-    }
-    await vfs.seedPackage(dir, files);
-  }
-  wm.hooks.onClose = w => { const p = procs.get(w.pid); if (!p) return; p.windows.delete(w.id); send(p, 'window:close', { wid: w.id });
+  host.on('pty:data', (id, data) => {
+    const p = procs.get(ptyOwner.get(id));
+    if (p) send(p, 'pty:data', { id, data }); else (ptyBacklog.get(id) || ptyBacklog.set(id, []).get(id)).push(data);
+  });
+  host.on('pty:exit', (id, code) => { const p = procs.get(ptyOwner.get(id)); ptyOwner.delete(id); ptyBacklog.delete(id); p && send(p, 'pty:exit', { id, code }); });
+  host.on('browser:state', (id, st) => { const v = bviews.get(id), p = v && procs.get(v.pid); p && send(p, 'browser:state', { id, ...st }); });
+  host.on('browser:focus', id => { const v = bviews.get(id); v && wm.focus(v.w); });
+  wm.hooks.onClose = w => { dropWindowViews(w.id); const p = procs.get(w.pid); if (!p) return; p.windows.delete(w.id); send(p, 'window:close', { wid: w.id });
     if (!p.windows.size && p.manifest.exitWhenLastWindowCloses !== false) setTimeout(() => kill(p.pid), 30); };
   wm.hooks.onMessage = (w, data) => { const p = procs.get(w.pid); p && send(p, 'window:message', { wid: w.id, data }); };
   wm.hooks.onRemoteReady = w => { const p = procs.get(w.pid); p && send(p, 'window:remote-ready', { wid: w.id }); };
@@ -89,11 +93,9 @@ export async function init() {
 export async function setCurrentUser(user) {
   currentUser = user;
   if (user) {
-    await vfs.ensureHome(user.id, user.username);
-    const savedTheme = localStorage.getItem(`neoos.theme.${user.id}`) || localStorage.getItem('neoos.theme') || 'dark';
-    setTheme(['dark', 'light'].includes(savedTheme) ? savedTheme : 'dark', user);
+    setTheme('metro', user);
     const saved = localStorage.getItem(`neoos.wallpaper.${user.id}`) || 'default';
-    try { await applyWallpaper(wallpaperPhysicalPath(user, saved), user); } catch { await applyWallpaper('default', user); }
+    try { await applyWallpaper(saved); } catch { await applyWallpaper('default'); }
   }
 }
 export function endSession() {
@@ -108,31 +110,33 @@ export async function lockSession() {
   await setCurrentUser(next);
   return next;
 }
-async function applyWallpaper(value, user = currentUser) {
-  const desktop = document.getElementById('desktop'); if (!desktop || value === 'default') { desktop?.style.removeProperty('background-image'); return; }
-  const known = ['/system/wallpapers/ocean.svg', '/system/wallpapers/forest.svg', '/system/wallpapers/dusk.svg'];
-  const ownHome = user && `/home/${user.id}`;
-  if (!known.includes(value) && !(ownHome && value.startsWith(`${ownHome}/`))) throw new NeoError('EACCES', 'Wallpaper must be a built-in or a file in your own Home folder');
-  const file = await vfs.read(value), url = wallpaperData(file, value);
-  if (!url) throw new NeoError('EINVAL', 'Choose a supported image in neoOS storage');
-  desktop.style.backgroundImage = `url("${url}")`;
+// Wallpapers: "default", "preset:<name>" or the path of an image file on this computer.
+let wallpaperUrl = null;
+async function loadWallpaper(value) {
+  if (value.startsWith('preset:')) { const svg = vfs.presets[value.slice(7)]; if (!svg) throw new NeoError('ENOENT', 'Unknown wallpaper'); return { mime: 'image/svg+xml', content: svg }; }
+  return vfs.read(value);
 }
-function wallpaperPhysicalPath(user, value) {
-  if (['/system/wallpapers/ocean.svg', '/system/wallpapers/forest.svg', '/system/wallpapers/dusk.svg'].includes(value)) return value;
-  return physicalPath({ user }, value);
+async function applyWallpaper(value) {
+  const desktop = document.getElementById('desktop'); if (!desktop) return;
+  if (value === 'default') { desktop.style.removeProperty('background-image'); return; }
+  const file = await loadWallpaper(value);
+  const url = file.bytes && /^image\/(?:png|jpeg|webp|gif|avif|bmp)$/.test(file.mime) ? URL.createObjectURL(new Blob([file.bytes], { type: file.mime })) : wallpaperData(file, value);
+  if (!url) throw new NeoError('EINVAL', 'Choose a supported image file');
+  if (wallpaperUrl?.startsWith('blob:')) URL.revokeObjectURL(wallpaperUrl);
+  wallpaperUrl = url; desktop.style.backgroundImage = `url("${url}")`;
 }
-function wallpaperData(file, path) {
-  const content = file.content ?? (file.bytes ? new TextDecoder().decode(file.bytes) : '');
-  if (file.mime === 'image/svg+xml' || path.toLowerCase().endsWith('.svg') || /^\s*<svg\b/i.test(content)) {
+function wallpaperData(file, path) { // returns a data: URL (also used for previews shown inside sandboxed windows)
+  if (file.mime === 'image/svg+xml' || path.toLowerCase().endsWith('.svg')) {
+    const content = file.content ?? new TextDecoder().decode(file.bytes || new Uint8Array());
     if (/<script|on[a-z]+\s*=|(?:href|src)\s*=\s*["'](?:https?:|\/\/)/i.test(content)) return null;
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`;
   }
-  if (file.bytes && /^image\/(?:png|jpeg|webp|gif|avif)$/.test(file.mime)) {
+  if (file.bytes && /^image\/(?:png|jpeg|webp|gif|avif|bmp)$/.test(file.mime)) {
     let binary = ''; const bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes);
     for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     return `data:${file.mime};base64,${btoa(binary)}`;
   }
-  return /^data:image\/(?:png|jpeg|webp|gif|avif);base64,[\w+/]+=*$/i.test(file.content) ? file.content : null;
+  return null;
 }
 
 export const send = (p, event, payload) => p.port.postMessage({ event, payload });
@@ -162,6 +166,8 @@ export async function launch(ref, args = {}) {
 export function kill(pid) {
   const p = procs.get(pid); if (!p) return false;
   procs.delete(pid);
+  dropViewsOf(pid);
+  for (const [id, owner] of ptyOwner) if (owner === pid) { ptyOwner.delete(id); host.call('pty:kill', id).catch(() => {}); }
   [...p.windows].forEach(id => { const w = wm.get(id); w && wm.close(w, true); });
   p.frame.remove(); p.port.close();
   log('info', 'kernel', `exit pid ${pid}`); bus.emit('process:exit', pid); wm.hooks.onChange?.(); return true;
@@ -170,35 +176,88 @@ export function kill(pid) {
 // Scope check: manifest lists what the app MAY use; a trailing * is a prefix wildcard.
 const allowed = (decl, need) => decl.some(d => d === need || (d.endsWith('*') && need.startsWith(d.slice(0, -1))));
 const own = (p, wid) => { const w = wm.get(wid); if (!w) throw new NeoError('ENOENT', 'No such window'); if (w.pid !== p.pid) throw new NeoError('EPERM', 'Window belongs to another process'); return w; };
-const setTheme = (n, user = currentUser) => { if (!['dark', 'light'].includes(n)) throw new NeoError('EINVAL', 'Unknown theme'); theme = n; try { localStorage.setItem('neoos.theme', n); if (user) localStorage.setItem(`neoos.theme.${user.id}`, n); } catch {} document.documentElement.dataset.theme = n; wm.setTheme(n); procs.forEach(p => send(p, 'theme:changed', n)); };
+const ownPty = (p, id) => { if (ptyOwner.get(id) !== p.pid) throw new NeoError('EPERM', 'No such terminal session'); return id; };
+const setTheme = (n, user = currentUser) => { if (!THEMES.includes(n)) return; theme = n; document.documentElement.dataset.theme = n; wm.setTheme(n); setTimeout(() => window.dispatchEvent(new Event('resize')), 60); /* re-fit windows to the new skin's panel/dock sizes */ procs.forEach(p => send(p, 'theme:changed', n)); };
+const storeKey = (p, k) => `neoos.appdata.${p.user.id}.${p.appId}.${String(k).slice(0, 100)}`;
+
+// Native browser views (Electron WebContentsView) float above the DOM. The kernel keeps each one glued to the body of its
+// owning window and hides it while it is covered by another window, a menu, the launcher or a dialog.
+const bviews = new Map(); let bframe = 0;
+const zOf = w => parseFloat(w.el.style.zIndex) || 0;
+const ownView = (p, id) => { const v = bviews.get(id); if (!v || v.pid !== p.pid) throw new NeoError('EPERM', 'No such browser view'); return id; };
+function dropView(id) { if (bviews.delete(id)) host.call('browser:destroy', id).catch(() => {}); }
+function dropViewsOf(pid) { [...bviews].forEach(([id, v]) => v.pid === pid && dropView(id)); }
+function dropWindowViews(wid) { [...bviews].forEach(([id, v]) => v.w.id === wid && dropView(id)); }
+const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+function syncViews() {
+  const overlay = !!document.querySelector('.neo-launcher,.neo-ctx,.neo-lock,[role=alertdialog],[role=dialog]');
+  for (const [id, v] of bviews) {
+    const w = v.w, r = w.el.querySelector('.neo-win__body').getBoundingClientRect(), inset = 4; // inset keeps the window resize handles usable
+    const b = { x: Math.round(r.left + inset), y: Math.round(r.top + v.top), width: Math.max(0, Math.round(r.width - 2 * inset)), height: Math.max(0, Math.round(r.height - v.top - inset)) };
+    const box = { left: b.x, top: b.y, right: b.x + b.width, bottom: b.y + b.height };
+    let visible = !overlay && !w.min && !w.el.hidden && !w.el.classList.contains('is-closing') && !w.el.classList.contains('is-minimizing');
+    if (visible) for (const o of wm.list()) if (o !== w && !o.min && !o.el.hidden && zOf(o) > zOf(w) && hit(box, o.el.getBoundingClientRect())) { visible = false; break; }
+    const key = [b.x, b.y, b.width, b.height, visible].join();
+    if (key !== v.last) { v.last = key; host.call('browser:bounds', id, { ...b, visible }).catch(() => {}); }
+  }
+}
+function pumpViews() {
+  if (bframe) return;
+  const tick = () => { if (!bviews.size) { bframe = 0; return; } try { syncViews(); } catch {} bframe = requestAnimationFrame(tick); };
+  bframe = requestAnimationFrame(tick);
+}
 
 const S = {
   'system.getApiVersion': { fn: () => API_VERSION },
   'system.supports': { fn: (p, f) => typeof f === 'string' && f in S },
   'system.info': { fn: () => ({ name: 'neoOS', version: '1.0.0', api: API_VERSION, processes: procs.size }) },
-  'system.storage': { fn: async () => { try { return await navigator.storage?.estimate?.() || null; } catch { return null; } } },
+  'system.storage': { fn: async () => { try { const d = await host.call('host:disk'); return { usage: d.total - d.free, quota: d.total }; } catch { return null; } } },
   'system.lock': { fn: () => { setTimeout(() => lockSession().catch(e => showAlert({ title: 'Unable to lock neoOS', message: e.message })), 0); } },
+  'system.paths': { fn: () => host.call('host:paths') },
+  'system.hostInfo': { scope: 'host.info', fn: () => host.call('host:info') },
+  'system.hostStats': { scope: 'host.info', fn: () => host.call('host:stats') },
+  'system.hostProcesses': { scope: 'host.processes', fn: () => host.call('host:processes') },
+  'system.killHostProcess': { scope: 'host.kill', fn: (p, pid) => host.call('host:kill', Number(pid)) },
+  'system.openPath': { scope: 'host.open', fn: (p, path) => host.call('host:open', requireFs(p, 'fs.read', path)) },
+  'storage.get': { fn: (p, k) => localStorage.getItem(storeKey(p, k)) },
+  'storage.set': { fn: (p, k, v) => { v = String(v); if (v.length > 1e6) throw new NeoError('EINVAL', 'Value too large'); localStorage.setItem(storeKey(p, k), v); } },
+  'storage.remove': { fn: (p, k) => { localStorage.removeItem(storeKey(p, k)); } },
+  'browser.open': { scope: 'browser', fn: async (p, o = {}) => {
+    const w = own(p, o.wid), id = await host.call('browser:create', { url: o.url ? String(o.url) : undefined });
+    bviews.set(id, { pid: p.pid, w, top: Math.max(0, Number(o.top) || 0), last: '' }); pumpViews(); return id;
+  } },
+  'browser.navigate': { scope: 'browser', fn: (p, id, url) => host.call('browser:navigate', ownView(p, id), String(url)) },
+  'browser.action': { scope: 'browser', fn: (p, id, a) => host.call('browser:action', ownView(p, id), String(a)) },
+  'browser.close': { scope: 'browser', fn: (p, id) => { dropView(ownView(p, id)); } },
+  'pty.spawn': { scope: 'pty', fn: async (p, o = {}) => {
+    const r = await host.call('pty:spawn', { cols: Number(o.cols) || 80, rows: Number(o.rows) || 24, cwd: o.cwd ? vfs.normalize(o.cwd) : undefined });
+    ptyOwner.set(r.id, p.pid);
+    for (const d of ptyBacklog.get(r.id) || []) send(p, 'pty:data', { id: r.id, data: d });
+    ptyBacklog.delete(r.id); return r;
+  } },
+  'pty.write': { scope: 'pty', fn: (p, id, data) => host.call('pty:write', ownPty(p, id), String(data)) },
+  'pty.resize': { scope: 'pty', fn: (p, id, c, r) => host.call('pty:resize', ownPty(p, id), Number(c), Number(r)) },
+  'pty.kill': { scope: 'pty', fn: (p, id) => host.call('pty:kill', ownPty(p, id)) },
   'account.self': { fn: p => ({ id: p.user.id, username: p.user.username, displayName: p.user.displayName, role: p.user.role }) },
   'account.list': { scope: 'account.manage', fn: p => { if (p.user.role !== 'admin') throw new NeoError('EPERM', 'Only an administrator can manage accounts'); return accounts.listAccounts(); } },
   'account.create': { scope: 'account.manage', fn: async (p, data) => { if (p.user.role !== 'admin') throw new NeoError('EPERM', 'Only an administrator can manage accounts'); return accounts.createAccount(data); } },
   'desktop.getWallpaper': { fn: p => localStorage.getItem(`neoos.wallpaper.${p.user.id}`) || 'default' },
-  'desktop.listWallpapers': { scope: 'desktop.customize', fn: async p => {
-    const userHome = `/home/${p.user.id}`; let images = [], todo = [userHome], visited = 0;
-    while (todo.length && visited < 500) {
-      const entries = await vfs.list(todo.shift());
-      for (const entry of entries) {
-        if (entry.type === 'directory') { todo.push(entry.path); continue; }
-        visited++;
-        if (!entry.mime?.startsWith('image/')) continue;
-        const file = await vfs.read(entry.path), preview = wallpaperData(file, entry.path);
-        if (preview) images.push({ id: publicPath(p, entry.path), label: entry.name, kind: 'file', preview });
+  'desktop.listWallpapers': { scope: 'desktop.customize', fn: async () => {
+    const images = [];
+    try {
+      const pictures = (await host.call('host:paths')).pictures;
+      for (const e of await vfs.list(pictures)) {
+        if (images.length >= 24) break;
+        if (e.type !== 'file' || !e.mime?.startsWith('image/')) continue;
+        let preview; if (e.size < 1.5e6) { try { preview = wallpaperData(await vfs.read(e.path), e.path); } catch {} }
+        images.push({ id: e.path, label: e.name, kind: 'file', ...(preview ? { preview } : {}) });
       }
-    }
-    const presets = await Promise.all(['ocean', 'forest', 'dusk'].map(async n => { const id = `/system/wallpapers/${n}.svg`; const file = await vfs.read(id); return { id, label: n[0].toUpperCase() + n.slice(1), kind: 'preset', preview: wallpaperData(file, id) }; }));
+    } catch {}
+    const presets = Object.keys(vfs.presets).map(n => ({ id: `preset:${n}`, label: n[0].toUpperCase() + n.slice(1), kind: 'preset', preview: wallpaperData({ mime: 'image/svg+xml', content: vfs.presets[n] }, n + '.svg') }));
     return [{ id: 'default', label: 'neoOS default', kind: 'preset' }, ...presets, ...images];
   } },
   'desktop.setWallpaper': { scope: 'desktop.customize', fn: async (p, value) => {
-    const selected = String(value); await applyWallpaper(wallpaperPhysicalPath(p.user, selected), p.user); localStorage.setItem(`neoos.wallpaper.${p.user.id}`, selected);
+    const selected = String(value); await applyWallpaper(selected); localStorage.setItem(`neoos.wallpaper.${p.user.id}`, selected);
   } },
   'app.exit': { fn: p => { setTimeout(() => kill(p.pid), 0); } },
   'app.getManifest': { fn: p => p.manifest },
@@ -217,13 +276,14 @@ const S = {
   'dialog.alert': { fn: (p, options = {}) => showAlert(options) },
   'dialog.confirm': { fn: (p, options = {}) => showConfirm(options) },
   'dialog.choose': { fn: (p, options = {}) => showChoose(options) },
-  'fs.list': { fn: async (p, path = '/') => { const physical = requireFs(p, 'fs.read', path); return (await vfs.list(physical)).map(e => ({ ...e, path: publicPath(p, e.path) })); } },
-  'fs.read': { fn: async (p, path) => { const file = await vfs.read(requireFs(p, 'fs.read', path)); return { ...file, path: publicPath(p, file.path) }; } },
-  'fs.write': { fn: async (p, path, data, mime) => { const e = await vfs.write(requireFs(p, 'fs.write', path), data, mime); return { ...e, path: publicPath(p, e.path) }; } },
-  'fs.mkdir': { fn: async (p, path) => { const e = await vfs.mkdir(requireFs(p, 'fs.write', path)); return { ...e, path: publicPath(p, e.path) }; } },
-  'fs.remove': { fn: (p, path) => vfs.remove(requireFs(p, 'fs.write', path)) },
-  'fs.move': { fn: async (p, from, to) => { const e = await vfs.move(requireFs(p, 'fs.write', from), requireFs(p, 'fs.write', to)); return { ...e, path: publicPath(p, e.path) }; } },
-  'dialog.openFile': { fn: async (p, options = {}) => { const home = `/home/${p.user.id}`, start = options.startPath ? physicalPath(p, options.startPath) : `${home}/Pictures`; const result = await openFilePicker({ ...options, startPath: start, homePath: home }); return result ? publicPath(p, result) : null; } },
+  'fs.list': { fn: (p, path = '/') => vfs.list(requireFs(p, 'fs.read', path)) },
+  'fs.read': { fn: (p, path) => vfs.read(requireFs(p, 'fs.read', path)) },
+  'fs.write': { fn: (p, path, data, mime) => vfs.write(requireFs(p, 'fs.write', path), data, mime) },
+  'fs.mkdir': { fn: (p, path) => vfs.mkdir(requireFs(p, 'fs.write', path)) },
+  'fs.remove': { fn: (p, path, opts) => vfs.remove(requireFs(p, 'fs.write', path), { permanent: !!opts?.permanent }) },
+  'fs.move': { fn: (p, from, to) => vfs.move(requireFs(p, 'fs.write', from), requireFs(p, 'fs.write', to)) },
+  'fs.copy': { fn: (p, from, to) => vfs.copy(requireFs(p, 'fs.read', from), requireFs(p, 'fs.write', to)) },
+  'dialog.openFile': { fn: async (p, options = {}) => { const home = (await host.call('host:paths')).home; return openFilePicker({ ...options, startPath: options.startPath ? vfs.normalize(options.startPath) : home, homePath: home }); } },
   'window.create': { fn: async (p, o = {}) => {
     const c = o.content || {}; let html = c.html, remoteUrl;
     if (c.url != null) {
@@ -251,18 +311,12 @@ const S = {
   'window.close': { fn: (p, id) => wm.close(own(p, id)) },
   'window.postMessage': { fn: (p, id, d) => { const w = own(p, id); if (w.remoteOrigin) w.frame.contentWindow.postMessage(d, w.remoteOrigin); else w.port.postMessage(d); } },
 };
+// Manifest scope `fs.read:~/*` / `fs.write:~/*` now covers the whole host file system; narrower scopes such as `fs.read:~/home/me/Documents/*` also work.
 function requireFs(proc, op, path) {
-  const normalized = vfs.normalize(path);
-  const scopes = proc.manifest.permissions || [];
-  if (normalized === '/' || !normalized.startsWith('/home/')) {
-    const need = `${op}:~${normalized === '/' ? '/' : normalized}`;
-    if (!allowed(scopes, need)) throw new NeoError('EACCES', `Missing permission: ${need}`);
-    return physicalPath(proc, normalized);
-  }
-  throw new NeoError('ENOENT', 'Path not found');
+  const normalized = vfs.normalize(path), need = `${op}:~${normalized}`;
+  if (!allowed(proc.manifest.permissions || [], need)) throw new NeoError('EACCES', `Missing permission: ${need}`);
+  return normalized;
 }
-function physicalPath(proc, path) { const p = vfs.normalize(path); return p === '/' ? `/home/${proc.user.id}` : `/home/${proc.user.id}${p}`; }
-function publicPath(proc, path) { const home = `/home/${proc.user.id}`; return path === home ? '/' : path.startsWith(`${home}/`) ? path.slice(home.length) : '/'; }
 export const syscalls = S;
 
 // Bridge: validate shape, rate-limit (200-call burst, refilled at 200 calls/s), check scope, dispatch, log.

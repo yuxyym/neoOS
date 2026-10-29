@@ -14,7 +14,6 @@ body{height:100vh;display:flex;overflow:hidden}
 <aside class="neo-sidebar"><div class="brand">Settings</div><nav id="nav" style="display:flex;flex-direction:column;gap:2px" aria-label="Settings categories"></nav></aside>
 <main class="page"><h1 id="heading"></h1><p id="description"></p>
 <section id="appearance" class="page-section">
-  <article class="neo-card panel"><h2>Theme</h2><div class="row"><div class="neo-segmented"><button id="dark">Dark</button><button id="light">Light</button></div></div></article>
   <article class="neo-card panel"><h2>Wallpaper</h2><p class="u-muted" style="margin:0">Pick a built-in background or any image in your neoOS files. Use Storage to import pictures from this device.</p><div id="wallpapers" class="wallpapers"></div><div class="row"><button id="browse" class="neo-btn">Choose an image…</button><button id="reload" class="neo-btn neo-btn--ghost">Refresh</button></div></article>
 </section>
 <section id="accounts-section" class="page-section" hidden>
@@ -22,7 +21,7 @@ body{height:100vh;display:flex;overflow:hidden}
   <article class="neo-card panel" id="add-account"><h2>Add account</h2><form id="account-form" class="form"><input id="display-name" class="neo-input" placeholder="Display name" required><input id="username" class="neo-input" placeholder="Username" autocomplete="username" required><input id="password" class="neo-input" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required><span></span><button class="neo-btn neo-btn--primary">Create account</button></form></article>
   <button id="lock" class="neo-btn">Lock or switch account…</button>
 </section>
-<section id="storage-section" class="page-section" hidden><article class="neo-card panel"><h2>neoOS storage</h2><p id="storage" style="margin:0"></p><div class="bar"><i id="usage" style="width:0"></i></div><p class="u-muted">Imported files are copied into your neoOS home and stored in this browser's local database. They stay available even if the original file changes or is deleted.</p><div class="row"><button id="import" class="neo-btn neo-btn--primary">Import files…</button><span id="import-status" role="status" class="u-muted"></span></div><input id="file-input" type="file" multiple hidden></article></section>
+<section id="storage-section" class="page-section" hidden><article class="neo-card panel"><h2>Disk storage</h2><p id="storage" style="margin:0"></p><div class="bar"><i id="usage" style="width:0"></i></div><p class="u-muted">Imported files are copied into your Downloads folder on this computer.</p><div class="row"><button id="import" class="neo-btn neo-btn--primary">Import files…</button><span id="import-status" role="status" class="u-muted"></span></div><input id="file-input" type="file" multiple hidden></article></section>
 <section id="about-section" class="page-section" hidden><article class="neo-card panel"><h2 id="about-title"></h2><p id="about-api"></p><p id="about-user" style="margin-bottom:0"></p></article></section>
 </main>
 <script>
@@ -31,16 +30,16 @@ const PAGES=[['appearance','Appearance','Customize how your desktop looks.'],['a
 let current='appearance',state=null;
 function show(id){current=id;const p=PAGES.find(x=>x[0]===id);$('heading').textContent=p[1];$('description').textContent=p[2];document.querySelectorAll('.page-section').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('is-active',b.dataset.id===id))}
 $('nav').replaceChildren(...PAGES.map(([id,l])=>{const b=document.createElement('button');b.className='neo-sidebar__item';b.dataset.id=id;b.textContent=l;b.onclick=()=>show(id);return b}));
-$('dark').onclick=()=>post({theme:'dark'});$('light').onclick=()=>post({theme:'light'});$('browse').onclick=()=>post({openWallpaper:true});$('reload').onclick=()=>post({refresh:true});$('lock').onclick=()=>post({lock:true});
+$('browse').onclick=()=>post({openWallpaper:true});$('reload').onclick=()=>post({refresh:true});$('lock').onclick=()=>post({lock:true});
 $('account-form').onsubmit=e=>{e.preventDefault();post({createAccount:{displayName:$('display-name').value,username:$('username').value,password:$('password').value}});e.target.reset()};
 const fmt=n=>{if(!Number.isFinite(n))return 'Unavailable';const u=['B','KB','MB','GB'];let i=0;while(n>=1024&&i<3){n/=1024;i++}return `${n.toFixed(i?1:0)} ${u[i]}`};
 $('import').onclick=()=>$('file-input').click();
 $('file-input').onchange=async e=>{const files=[...e.target.files];let n=0;for(const f of files){if(f.size>50*1048576){$('import-status').textContent=`Skipped ${f.name}: larger than 50 MB.`;continue}post({importFile:{name:f.name,type:f.type,bytes:new Uint8Array(await f.arrayBuffer())}});n++}e.target.value='';if(n)$('import-status').textContent=`Importing ${n} file${n===1?'':'s'}…`};
 const hue=s=>[...s].reduce((h,c)=>(h*31+c.charCodeAt(0))%360,7);
 neoWindow.onMessage(d=>{
- if(d.imported)$('import-status').textContent=`Saved ${d.imported} to your neoOS home.`;
+ if(d.imported)$('import-status').textContent=`Saved ${d.imported} to your Downloads folder.`;
  if(!d.theme)return;state=d;
- $('dark').classList.toggle('is-active',d.theme==='dark');$('light').classList.toggle('is-active',d.theme==='light');
+ 
  $('wallpapers').replaceChildren(...d.wallpapers.map(w=>{const b=document.createElement('button');b.className='wp'+(d.wallpaper===w.id?' is-active':'');if(w.preview)b.style.backgroundImage=`linear-gradient(#0000,#0009),url("${w.preview}")`;const s=document.createElement('span');s.textContent=w.label;b.append(s);b.onclick=()=>post({wallpaper:w.id});return b}));
  $('account-error').textContent=d.accountError||'';$('add-account').hidden=!!d.accountError;
  $('account-list').replaceChildren(...d.accounts.map(a=>{const r=document.createElement('div'),av=document.createElement('span'),t=document.createElement('div');r.className='account';av.className='neo-avatar';av.textContent=a.displayName[0];av.style.background=`hsl(${hue(a.username)} 52% 46%)`;t.innerHTML='<strong></strong><div class="u-muted"></div>';t.firstChild.textContent=a.displayName;t.lastChild.textContent=`@${a.username} · ${a.role}`;r.append(av,t);return r}));

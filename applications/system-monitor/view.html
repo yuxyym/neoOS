@@ -1,7 +1,38 @@
-<style>body{height:100vh;display:flex;flex-direction:column;overflow:hidden}.summary{display:flex;gap:12px;padding:12px}.metric{flex:1}.listing{flex:1;overflow:auto;padding:0 12px 12px}.actions{display:flex;gap:4px}.actions button{padding:3px 7px}.sub{color:var(--neo-text-muted);font-size:.8rem}</style>
-<div class="summary"><div class="neo-card metric"><div class="u-muted">Processes</div><strong id="count">—</strong></div><div class="neo-card metric"><div class="u-muted">Local storage used</div><strong id="used">—</strong><div id="quota" class="sub"></div></div></div>
-<div class="listing"><table class="neo-table"><thead><tr><th>Application</th><th>PID</th><th>Windows</th><th>Uptime</th><th>Controls</th></tr></thead><tbody id="rows"></tbody></table></div><div id="updated" class="sub" style="padding:8px 12px"></div>
+<style>
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden}.top{padding:12px 12px 4px;color:var(--neo-text-muted);font-size:.85rem}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:8px 12px}.metric strong{font-size:1.4rem;font-variant-numeric:tabular-nums}.sub{color:var(--neo-text-muted);font-size:.8rem}
+.bar{height:6px;border-radius:3px;background:var(--neo-surface-0);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--neo-accent);transition:width .4s}
+.cores{display:flex;gap:2px;align-items:flex-end;height:26px;margin-top:8px}.cores i{flex:1;min-width:2px;background:var(--neo-accent);border-radius:1px;transition:height .4s}
+.listing{flex:1;overflow:auto;padding:0 12px 12px}h2{font-size:.95rem;margin:14px 0 6px}.actions{display:flex;gap:4px}.actions button{padding:3px 7px}.num{text-align:end;font-variant-numeric:tabular-nums}
+</style>
+<div class="top" id="top">Loading…</div>
+<div class="summary">
+ <div class="neo-card metric"><div class="sub">CPU</div><strong id="cpu">–</strong><div class="cores" id="cores"></div></div>
+ <div class="neo-card metric"><div class="sub">Memory</div><strong id="mem">–</strong><div class="sub" id="memd"></div><div class="bar"><i id="memb" style="width:0"></i></div></div>
+ <div class="neo-card metric"><div class="sub">Disk (home volume)</div><strong id="disk">–</strong><div class="sub" id="diskd"></div><div class="bar"><i id="diskb" style="width:0"></i></div></div>
+ <div class="neo-card metric"><div class="sub">Uptime</div><strong id="up">–</strong><div class="sub" id="load"></div></div>
+</div>
+<div class="listing">
+ <h2>neoOS applications</h2><table class="neo-table"><thead><tr><th>Application</th><th>PID</th><th>Windows</th><th>Uptime</th><th>Controls</th></tr></thead><tbody id="apps"></tbody></table>
+ <h2 id="hh">Computer processes</h2><table class="neo-table"><thead><tr><th>Name</th><th>PID</th><th>User</th><th class="num">CPU %</th><th class="num">Memory</th></tr></thead><tbody id="procs"></tbody></table>
+</div>
 <script>
-const fmt=n=>{if(!Number.isFinite(n))return 'Unavailable';const u=['B','KB','MB','GB'];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return `${n.toFixed(i?1:0)} ${u[i]}`};
-neoWindow.onMessage(d=>{count.textContent=d.processes.length;used.textContent=d.storage?fmt(d.storage.usage):'Unavailable';quota.textContent=d.storage?`of ${fmt(d.storage.quota)}`:'Browser storage estimate unavailable';rows.replaceChildren(...d.processes.map(p=>{const tr=document.createElement('tr'),app=document.createElement('td'),pid=document.createElement('td'),windows=document.createElement('td'),uptime=document.createElement('td'),actions=document.createElement('td');app.textContent=p.name;pid.textContent=p.pid;windows.textContent=p.windows;uptime.textContent=`${Math.floor((Date.now()-p.started)/1000)}s`;actions.className='actions';for(const [name,action] of [['Focus','focus'],['Minimize','minimize'],['End','kill']]){const b=document.createElement('button');b.className='neo-btn neo-btn--sm '+(action==='kill'?'neo-btn--danger':'');b.textContent=name;b.onclick=()=>neoWindow.postMessage({[action]:p.pid});actions.append(b)}tr.append(app,pid,windows,uptime,actions);return tr}));updated.textContent=`${d.info.name} ${d.info.version} · refreshed ${new Date().toLocaleTimeString()}`});
+const $=id=>document.getElementById(id),cell=(t,c)=>{const e=document.createElement('td');e.textContent=t;if(c)e.className=c;return e};
+const fmt=n=>{if(!Number.isFinite(n))return '–';const u=['B','KB','MB','GB','TB'];let i=0;while(n>=1024&&i<4){n/=1024;i++}return `${n.toFixed(i>1?1:0)} ${u[i]}`};
+const dur=s=>{s=Math.floor(s);const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?`${d}d ${h}h`:h?`${h}h ${m}m`:`${m}m ${s%60}s`};
+neoWindow.onMessage(d=>{
+ if(d.error){$('top').textContent=d.error;return}
+ const i=d.info,s=d.stats;
+ $('top').textContent=`${i.hostname} · ${i.osType} ${i.release} (${i.arch}) · ${i.cpu.model} × ${i.cpu.count}`;
+ $('cpu').textContent=s.cpu.toFixed(0)+'%';
+ $('cores').replaceChildren(...s.cores.map(c=>{const b=document.createElement('i');b.style.height=Math.max(2,c/100*26)+'px';b.title=c+'%';return b}));
+ const used=s.totalmem-s.freemem;$('mem').textContent=fmt(used);$('memd').textContent=`of ${fmt(s.totalmem)}`;$('memb').style.width=(used/s.totalmem*100)+'%';
+ if(d.storage){$('disk').textContent=fmt(d.storage.usage);$('diskd').textContent=`of ${fmt(d.storage.quota)}`;$('diskb').style.width=(d.storage.usage/d.storage.quota*100)+'%'}
+ $('up').textContent=dur(s.uptime);$('load').textContent=i.platform==='win32'?'':`Load ${s.loadavg.map(x=>x.toFixed(2)).join(' ')}`;
+ $('apps').replaceChildren(...d.apps.map(p=>{const tr=document.createElement('tr'),a=document.createElement('td');a.className='actions';
+  for(const [n,k] of [['Focus','focus'],['Minimize','minimize'],['End','kill']]){const b=document.createElement('button');b.className='neo-btn neo-btn--sm '+(k==='kill'?'neo-btn--danger':'');b.textContent=n;b.onclick=()=>neoWindow.postMessage({[k]:p.pid});a.append(b)}
+  tr.append(cell(p.name),cell(p.pid),cell(p.windows),cell(Math.floor((Date.now()-p.started)/1000)+'s'),a);return tr}));
+ $('hh').textContent=`Computer processes (top ${d.procs.length} of ${d.total} by CPU)`;
+ $('procs').replaceChildren(...d.procs.map(p=>{const tr=document.createElement('tr');tr.append(cell(p.name),cell(p.pid),cell(p.user),cell(p.cpu.toFixed(1),'num'),cell(fmt(p.mem),'num'));return tr}));
+});
 </script>

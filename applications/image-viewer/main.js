@@ -10,7 +10,7 @@ async function show(path) {
 }
 async function choose() {
   const user = await neo.account.self();
-  const path = await neo.dialog.openFile({ accept: 'image/*', startPath: '/' });
+  const path = await neo.dialog.openFile({ accept: 'image/*' });
   if (path) show(path);
 }
 neo.on('launch', args => args?.path ? show(args.path) : choose());

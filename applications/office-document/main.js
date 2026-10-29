@@ -2,6 +2,7 @@ const editorOrigin = 'https://edit.chaxus.com';
 const requestId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const mimeFor = path => ({ docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword', odt: 'application/vnd.oasis.opendocument.text', rtf: 'application/rtf', txt: 'text/plain' })[path.split('.').pop().toLowerCase()] || 'application/octet-stream';
 neo.on('launch', async args => {
+  const home = (await neo.system.paths()).home;
   let path = args?.path || null, w, queuedOpen = path, ready = false, documentOpened = false;
   try {
     w = await neo.window.create({ title: path?.split('/').pop() || 'Documents', width: 1120, height: 760, minWidth: 720, minHeight: 480, resizable: true, openFileAction: true, saveFileAction: true, content: { url: `${editorOrigin}/editor` } });
@@ -19,7 +20,7 @@ neo.on('launch', async args => {
       await w.postMessage({ id: requestId(), type: 'document:open-buffer', payload: { fileName: 'Untitled.docx', buffer: bytes.buffer, mimeType: mimeFor('Untitled.docx'), readonly: false } });
     };
     const pickFile = async () => {
-      const target = await neo.dialog.openFile({ startPath: '/', accept: '.docx,.doc,.odt,.rtf,.txt' });
+      const target = await neo.dialog.openFile({ accept: '.docx,.doc,.odt,.rtf,.txt' });
       if (target) { if (ready) await openStored(target); else queuedOpen = target; }
     };
     neo.on('window:remote-message', async ({ wid, data }) => {
@@ -32,8 +33,8 @@ neo.on('launch', async args => {
           const file = data.payload?.file;
           if (!file?.arrayBuffer) throw new Error('The editor returned no file data.');
           let name = (file.name || data.payload.fileName || path?.split('/').pop() || 'Untitled.docx').replace(/[\\/:*?"<>|]/g, '_');
-          if (!path) { const names = new Set((await neo.fs.list('/')).map(entry => entry.name)); const ext = name.includes('.') ? `.${name.split('.').pop()}` : '.docx'; const stem = name.replace(/\.[^.]*$/, '') || 'Untitled'; let n = 2; while (names.has(name)) name = `${stem} (${n++})${ext}`; }
-          const target = path ? path.replace(/\.doc$/i, '.docx') : `/${name}`;
+          if (!path) { const names = new Set((await neo.fs.list(home)).map(entry => entry.name)); const ext = name.includes('.') ? `.${name.split('.').pop()}` : '.docx'; const stem = name.replace(/\.[^.]*$/, '') || 'Untitled'; let n = 2; while (names.has(name)) name = `${stem} (${n++})${ext}`; }
+          const target = path ? path.replace(/\.doc$/i, '.docx') : `${home}/${name}`;
           await neo.fs.write(target, new Uint8Array(await file.arrayBuffer()), mimeFor(target));
           path = target; await w.setTitle(target.split('/').pop());
         }

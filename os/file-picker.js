@@ -12,13 +12,13 @@ export function openFilePicker({ accept = '*/*', startPath, homePath = '/home/us
     const location = document.createElement('div'); location.className = 'u-muted'; location.style.marginBottom = '8px';
     const list = document.createElement('div'); Object.assign(list.style, { flex: '1', overflow: 'auto', border: '1px solid var(--neo-border)', borderRadius: '8px', padding: '4px' });
     const footer = document.createElement('div'); Object.assign(footer.style, { display: 'flex', justifyContent: 'space-between', paddingTop: '12px' });
-    const hint = document.createElement('span'); hint.className = 'u-muted'; hint.textContent = 'Files stay inside neoOS storage.';
+    const hint = document.createElement('span'); hint.className = 'u-muted'; hint.textContent = 'Browsing files on this computer.';
     const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.gap = '8px';
     const cancel = document.createElement('button'); cancel.className = 'neo-btn'; cancel.textContent = 'Cancel';
     const open = document.createElement('button'); open.className = 'neo-btn neo-btn--primary'; open.textContent = 'Open'; open.disabled = true;
     actions.append(cancel, open); footer.append(hint, actions); panel.append(header, location, list, footer); overlay.append(panel); document.body.append(overlay);
-    let current = vfs.normalize(startPath || `${homePath}/Pictures`), selected = null, done = false;
-    if (current !== homePath && !current.startsWith(`${homePath}/`)) current = `${homePath}/Pictures`;
+    let current = vfs.normalize(startPath || homePath), selected = null, done = false;
+    
     const finish = value => { if (done) return; done = true; overlay.remove(); document.removeEventListener('keydown', onKey); resolve(value); };
     const onKey = e => { if (e.key === 'Escape') finish(null); if (e.key === 'Enter' && selected) finish(selected.path); };
     document.addEventListener('keydown', onKey);
@@ -32,10 +32,10 @@ export function openFilePicker({ accept = '*/*', startPath, homePath = '/home/us
     const button = (label, action) => { const b = document.createElement('button'); b.className = 'neo-btn neo-btn--ghost'; b.style.display = 'block'; b.style.width = '100%'; b.style.textAlign = 'left'; b.textContent = label; b.onclick = action; return b; };
     async function render() {
       selected = null; open.disabled = true; location.textContent = current; list.replaceChildren();
-      if (current !== homePath) list.append(button('↰  Parent folder', () => { current = current.slice(0, current.lastIndexOf('/')) || homePath; if (current !== homePath && !current.startsWith(`${homePath}/`)) current = homePath; render(); }));
+      if (current !== '/') list.append(button('↰  Parent folder', () => { current = current.slice(0, current.lastIndexOf('/')) || '/'; render(); }));
       let entries; try { entries = await vfs.list(current); } catch { entries = []; }
       for (const entry of entries) {
-        if (entry.type === 'file' && !matches(entry)) continue;
+        if (entry.name.startsWith('.') || (entry.type === 'file' && !matches(entry))) continue;
         const row = button(`${entry.type === 'directory' ? '📁' : '▧'}  ${entry.name}`, () => {
           if (entry.type === 'directory') { current = entry.path; render(); return; }
           selected = entry; open.disabled = false;

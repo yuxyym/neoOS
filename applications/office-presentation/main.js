@@ -2,6 +2,7 @@ const editorOrigin = 'https://edit.chaxus.com';
 const requestId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const mimeFor = path => ({ pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ppt: 'application/vnd.ms-powerpoint', odp: 'application/vnd.oasis.opendocument.presentation' })[path.split('.').pop().toLowerCase()] || 'application/octet-stream';
 neo.on('launch', async args => {
+  const home = (await neo.system.paths()).home;
   let path = args?.path || null, w, queuedOpen = path, ready = false, documentOpened = false;
   try {
     w = await neo.window.create({ title: path?.split('/').pop() || 'Presentations', width: 1180, height: 780, minWidth: 760, minHeight: 480, resizable: true, openFileAction: true, saveFileAction: true, content: { url: `${editorOrigin}/editor` } });
@@ -14,7 +15,7 @@ neo.on('launch', async args => {
       path = target; await w.setTitle(path.split('/').pop());
     };
     const openTemplate = async () => { const bytes = new Uint8Array(await neo.app.readAsset('blank.pptx')); documentOpened = false; await w.postMessage({ id: requestId(), type: 'document:open-buffer', payload: { fileName: 'Untitled.pptx', buffer: bytes.buffer, mimeType: mimeFor('Untitled.pptx'), readonly: false } }); };
-    const pickFile = async () => { const target = await neo.dialog.openFile({ startPath: '/', accept: '.pptx,.ppt,.odp' }); if (target) { if (ready) await openStored(target); else queuedOpen = target; } };
+    const pickFile = async () => { const target = await neo.dialog.openFile({ accept: '.pptx,.ppt,.odp' }); if (target) { if (ready) await openStored(target); else queuedOpen = target; } };
     neo.on('window:remote-message', async ({ wid, data }) => {
       if (wid !== w.id || !data?.type?.startsWith('document:')) return;
       try {
@@ -25,8 +26,8 @@ neo.on('launch', async args => {
           const file = data.payload?.file;
           if (!file?.arrayBuffer) throw new Error('The editor returned no file data.');
           let name = (file.name || data.payload.fileName || path?.split('/').pop() || 'Untitled.pptx').replace(/[\\/:*?"<>|]/g, '_');
-          if (!path) { const names = new Set((await neo.fs.list('/')).map(entry => entry.name)); const ext = name.includes('.') ? `.${name.split('.').pop()}` : '.pptx'; const stem = name.replace(/\.[^.]*$/, '') || 'Untitled'; let n = 2; while (names.has(name)) name = `${stem} (${n++})${ext}`; }
-          const target = path ? path.replace(/\.ppt$/i, '.pptx') : `/${name}`;
+          if (!path) { const names = new Set((await neo.fs.list(home)).map(entry => entry.name)); const ext = name.includes('.') ? `.${name.split('.').pop()}` : '.pptx'; const stem = name.replace(/\.[^.]*$/, '') || 'Untitled'; let n = 2; while (names.has(name)) name = `${stem} (${n++})${ext}`; }
+          const target = path ? path.replace(/\.ppt$/i, '.pptx') : `${home}/${name}`;
           await neo.fs.write(target, new Uint8Array(await file.arrayBuffer()), mimeFor(target));
           path = target; await w.setTitle(target.split('/').pop());
         }

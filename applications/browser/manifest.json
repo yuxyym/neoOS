@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.browser",
+  "name": "Browser",
+  "version": "1.0.0",
+  "description": "Browse the web with a real Chromium view (no iframe or CORS limits)",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["Internet"],
+  "permissions": ["browser"],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

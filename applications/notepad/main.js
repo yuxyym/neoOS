@@ -19,11 +19,11 @@ neo.window.create({ title: 'Notepad', width: 700, height: 500, minWidth: 360, mi
   win = w; w.setBeforeClose(true); if (queuedPath) load(queuedPath);
   w.on('beforeclose', async () => { if (!dirty || await neo.dialog.confirm({ title: 'Unsaved changes', message: `“${label().replace('• ', '')}” has unsaved changes. Close without saving?` })) w.close(); });
   w.on('message', async m => {
-    if (m.open) { const path = await neo.dialog.openFile({ startPath: '/' }); if (path) load(path); }
+    if (m.open) { const path = await neo.dialog.openFile(); if (path) load(path); }
     if (m.save != null) {
       try {
         if (!filePath || m.saveAs) {
-          let dir = '/'; try { await neo.fs.list('/Documents'); dir = '/Documents'; } catch {}
+          const home = (await neo.system.paths()).home; let dir = home; try { await neo.fs.list(`${home}/Documents`); dir = `${home}/Documents`; } catch {}
           filePath = await freePath(dir, 'Note', '.txt');
         }
         const saved = await neo.fs.write(filePath, String(m.save), 'text/plain'); dirty = false; retitle(); w.postMessage({ saved: filePath });

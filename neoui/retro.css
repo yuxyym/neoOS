@@ -1,0 +1,116 @@
+/* neoOS "Metro" look (Windows 8 era): flat, square, accent colour, Segoe UI, tile start screen, taskbar.
+   This is the only theme. File name kept so existing links keep working. Every text/background pair is >= 4.5:1 (WCAG AA). */
+[data-theme=metro] { color-scheme: light; font-size: 14px;
+  --neo-font-sans: "Segoe UI", "Selawik", "Segoe UI Variable", "Open Sans", "Noto Sans", Cantarell, "Helvetica Neue", Arial, sans-serif;
+  --neo-radius-sm: 0; --neo-radius-md: 0; --neo-radius-lg: 0;
+  --neo-surface-0: #f0f0f0; --neo-surface-1: #ffffff; --neo-surface-2: #f5f5f5; --neo-surface-3: #e1e1e1;
+  --neo-text: #1a1a1a; --neo-text-muted: #4d4d4d; --neo-border: #8a8a8a; --neo-hairline: rgb(0 0 0 / .14);
+  --neo-accent: #0063b1; --neo-accent-hover: #1273c4; --neo-on-accent: #ffffff; --neo-danger: #c42b1c; --neo-success: #107c10;
+  --neo-hover: rgb(0 0 0 / .08); --neo-pressed: rgb(0 0 0 / .16); --neo-focus-ring: 0 0 0 2px #0063b1;
+  --neo-shadow-1: 0 1px 4px rgb(0 0 0 / .3); --neo-shadow-2: 0 4px 16px rgb(0 0 0 / .35);
+  --neo-panel-h: 30px; --neo-dock-reserve: 40px; }
+[data-theme=metro] *:not(.neo-spinner) { border-radius: 0 !important; }
+[data-theme=metro] ::selection { background: #0063b1; color: #fff; }
+[data-theme=metro] ::placeholder { color: #595959; opacity: 1; }
+[data-theme=metro] * { scrollbar-width: auto; scrollbar-color: #9a9a9a #f0f0f0; }
+[data-theme=metro] h1 { font-weight: 300; } [data-theme=metro] .page h1 { font-size: 2rem; }
+[data-theme=metro] :focus-visible { outline: 2px solid #0063b1; outline-offset: 1px; box-shadow: none; }
+[data-theme=metro] .neo-dock :focus-visible, [data-theme=metro] .neo-launcher :focus-visible, [data-theme=metro] .neo-lock :focus-visible, [data-theme=metro] .neo-toast :focus-visible, [data-theme=metro] .is-active > .neo-win__bar :focus-visible { outline-color: #fff; }
+[data-theme=metro] .warn { color: #8a5a00; }                       /* Log Viewer warnings (was low contrast) */
+[data-theme=metro] .neo-avatar { background-image: linear-gradient(rgb(0 0 0 / .4), rgb(0 0 0 / .4)); color: #fff; }
+
+/* ---- controls ---- */
+[data-theme=metro] .neo-btn { min-height: 30px; padding: 0 1rem; border: 2px solid #adadad; background: #e1e1e1; color: #1a1a1a; box-shadow: none; transition: none; }
+[data-theme=metro] .neo-btn:hover { background: #d2d2d2; border-color: #767676; }
+[data-theme=metro] .neo-btn:active { background: #3c3c3c; border-color: #3c3c3c; color: #fff; }
+[data-theme=metro] .neo-btn--primary { background: #0063b1; border-color: #0063b1; color: #fff; }
+[data-theme=metro] .neo-btn--primary:hover { background: #1273c4; border-color: #1273c4; }
+[data-theme=metro] .neo-btn--primary:active { background: #004a85; border-color: #004a85; }
+[data-theme=metro] .neo-btn--danger { background: #c42b1c; border-color: #c42b1c; color: #fff; }
+[data-theme=metro] .neo-btn--danger:hover { background: #d83b2b; border-color: #d83b2b; }
+[data-theme=metro] .neo-btn--danger:active { background: #a52114; border-color: #a52114; }
+[data-theme=metro] .neo-btn--ghost { background: transparent; border-color: transparent; color: inherit; }
+[data-theme=metro] .neo-btn--ghost:hover { background: rgb(0 0 0 / .1); border-color: transparent; }
+[data-theme=metro] .neo-btn--ghost:active, [data-theme=metro] .neo-btn--ghost.is-active { background: rgb(0 0 0 / .2); border-color: transparent; color: inherit; }
+[data-theme=metro] .neo-btn--icon { width: 30px; padding: 0; }
+[data-theme=metro] .neo-btn:disabled { opacity: .5; }
+[data-theme=metro] .neo-input { min-height: 30px; background: #fff; color: #1a1a1a; border: 2px solid #767676; }
+[data-theme=metro] .neo-input:hover { border-color: #1a1a1a; }
+[data-theme=metro] .neo-input:focus { border-color: #0063b1; box-shadow: none; outline: none; }
+[data-theme=metro] .neo-card { background: #f5f5f5; border: 1px solid #c8c8c8; }
+[data-theme=metro] .neo-table th { color: #1a1a1a; font-weight: 600; border-block-end: 2px solid #c8c8c8; }
+[data-theme=metro] .neo-table td { border-block-end: 1px solid #e0e0e0; }
+[data-theme=metro] .neo-table tbody tr:hover { background: #e5f1fb; }
+[data-theme=metro] .neo-toolbar { background: #f0f0f0; border-block-end: 1px solid #d0d0d0; }
+[data-theme=metro] .neo-statusbar { background: #f0f0f0; color: #4d4d4d; border-block-start: 1px solid #d0d0d0; }
+[data-theme=metro] .neo-sidebar { background: #f0f0f0; border-inline-end: 1px solid #d0d0d0; }
+[data-theme=metro] .neo-sidebar__label { color: #4d4d4d; font-weight: 600; }
+[data-theme=metro] .neo-sidebar__item { height: 32px; color: #1a1a1a; }
+[data-theme=metro] .neo-sidebar__item:hover { background: rgb(0 0 0 / .08); }
+[data-theme=metro] .neo-sidebar__item.is-active { background: #0063b1; color: #fff; font-weight: 600; }
+[data-theme=metro] .neo-segmented { padding: 0; gap: 2px; border: 0; background: #e1e1e1; }
+[data-theme=metro] .neo-segmented > button { min-height: 28px; padding: 0 .9rem; color: #1a1a1a; background: transparent; }
+[data-theme=metro] .neo-segmented > button:hover { background: rgb(0 0 0 / .1); }
+[data-theme=metro] .neo-segmented > button.is-active { background: #0063b1; color: #fff; box-shadow: none; }
+
+/* ---- desktop, top bar, taskbar ---- */
+[data-theme=metro] #desktop { background: #134a7c; }
+[data-theme=metro] .neo-icon { text-shadow: 0 0 3px #000, 0 1px 2px #000; }
+[data-theme=metro] .neo-boot { background: #0063b1; }
+[data-theme=metro] .neo-boot__bar { background: rgb(255 255 255 / .35); } [data-theme=metro] .neo-boot__bar i { background: #fff; }
+[data-theme=metro] .neo-panel { background: #f2f2f2; color: #1a1a1a; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid #c8c8c8; font-size: 13px; }
+[data-theme=metro] .neo-panel__btn { height: 26px; }
+[data-theme=metro] .neo-panel__btn:hover, [data-theme=metro] .neo-panel__btn[aria-expanded=true] { background: rgb(0 0 0 / .1); }
+[data-theme=metro] .neo-dock { left: 0; right: 0; bottom: 0; transform: none; max-width: none; height: 40px; gap: 2px; padding: 0 0 0 0; border: 0; border-top: 1px solid #3a3a3a; animation: none;
+  background: #1f1f1f; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
+[data-theme=metro] .neo-dock__app { width: 46px; height: 39px; border-radius: 0; }
+[data-theme=metro] .neo-dock__app img { width: 24px; height: 24px; }
+[data-theme=metro] .neo-dock__app:hover { background: #3d3d3d; }
+[data-theme=metro] .neo-dock__app:hover img, [data-theme=metro] .neo-dock__app:active img { transform: none; }
+[data-theme=metro] .neo-dock__app[data-running=true]::after { bottom: 0; left: 50%; width: 16px; height: 3px; margin-left: -8px; border-radius: 0; background: #9ad0f5; }
+[data-theme=metro] .neo-dock__app[data-active=true] { background: #4a4a4a; }
+[data-theme=metro] .neo-dock__app[data-active=true]::after { width: 30px; margin-left: -15px; background: #4cc2ff; }
+[data-theme=metro] .neo-dock__sep { width: 1px; height: 24px; margin: 0 6px; background: #5a5a5a; }
+[data-theme=metro] .neo-dock__grid { order: -2; width: 52px; margin-right: 4px; font-size: 0; background: #0063b1 url(../branding/neoiconwhite.png) no-repeat center / 22px; }
+[data-theme=metro] .neo-dock__grid:hover { background-color: #1273c4; }
+[data-theme=metro] .neo-dock__sep:nth-last-child(2) { order: -1; }
+
+/* ---- windows: accent title bar when active, flat white when not ---- */
+[data-theme=metro] .neo-win { border: 1px solid #8a8a8a; box-shadow: 0 2px 8px rgb(0 0 0 / .3); }
+[data-theme=metro] .neo-win.is-active { border-color: #0063b1; box-shadow: 0 6px 24px rgb(0 0 0 / .4); }
+[data-theme=metro] .neo-win.is-max { border-width: 0; box-shadow: none; }
+[data-theme=metro] .neo-win__bar { height: 30px; padding-inline-start: 10px; background: #fff; color: #4d4d4d; }
+[data-theme=metro] .is-active > .neo-win__bar { background: #0063b1; color: #fff; }
+[data-theme=metro] .neo-win__title { font-size: 13px; font-weight: 400; }
+[data-theme=metro] .neo-win__tool { height: 22px; background: #fff; color: #1a1a1a; border: 1px solid #8a8a8a; }
+[data-theme=metro] .neo-win__tool:hover { background: #e5f1fb; }
+[data-theme=metro] .neo-win__ctl button { width: 46px; }
+[data-theme=metro] .neo-win__ctl button:hover { background: rgb(0 0 0 / .12); }
+[data-theme=metro] .is-active .neo-win__ctl button:hover { background: rgb(255 255 255 / .25); }
+[data-theme=metro] .neo-win__ctl button[data-a=close]:hover, [data-theme=metro] .is-active .neo-win__ctl button[data-a=close]:hover { background: #c50f1f; color: #fff; }
+[data-theme=metro] .neo-snap { background: rgb(0 99 177 / .25); border-color: #0063b1; }
+
+/* ---- menus, popovers, toasts ---- */
+[data-theme=metro] .neo-ctx { background: #f2f2f2; color: #1a1a1a; padding: 2px 0; border: 1px solid #8a8a8a; box-shadow: 0 2px 8px rgb(0 0 0 / .3); backdrop-filter: none; -webkit-backdrop-filter: none; }
+[data-theme=metro] .neo-ctx__item { height: 30px; padding: 0 20px; }
+[data-theme=metro] .neo-ctx__item:hover:not(:disabled) { background: #0063b1; color: #fff; }
+[data-theme=metro] .neo-ctx__item--danger { color: #b3261e; }
+[data-theme=metro] .neo-ctx__item:disabled { opacity: .6; }
+[data-theme=metro] .neo-ctx__sep { background: #c8c8c8; margin: 3px 0; } [data-theme=metro] .neo-ctx__head { color: #4d4d4d; }
+[data-theme=metro] .neo-pop { width: 320px; }
+[data-theme=metro] .neo-toast { background: #0063b1; color: #fff; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: 0 4px 16px rgb(0 0 0 / .4); }
+[data-theme=metro] .neo-toast p { color: #eaf3fb; }
+
+/* ---- Start screen (app launcher): coloured tiles on a deep background ---- */
+[data-theme=metro] .neo-launcher { background: #16324f; color: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; }
+[data-theme=metro] .neo-launcher__search { height: 40px; border: 2px solid #fff; background: #fff; color: #1a1a1a; text-align: start; padding: 0 14px; }
+[data-theme=metro] .neo-launcher__grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+[data-theme=metro] .neo-launcher__empty { color: #dbe6f2; }
+[data-theme=metro] .neo-tile { aspect-ratio: 1; align-items: flex-start; justify-content: space-between; padding: 10px; color: #fff; text-align: start; font-size: 13px; }
+[data-theme=metro] .neo-tile img { margin: auto; }
+[data-theme=metro] .neo-tile:nth-child(10n+1) { background: #0063b1; } [data-theme=metro] .neo-tile:nth-child(10n+2) { background: #00796b; }
+[data-theme=metro] .neo-tile:nth-child(10n+3) { background: #a8420a; } [data-theme=metro] .neo-tile:nth-child(10n+4) { background: #6b4fa0; }
+[data-theme=metro] .neo-tile:nth-child(10n+5) { background: #00717a; } [data-theme=metro] .neo-tile:nth-child(10n+6) { background: #a62d99; }
+[data-theme=metro] .neo-tile:nth-child(10n+7) { background: #3d6b04; } [data-theme=metro] .neo-tile:nth-child(10n+8) { background: #b5340a; }
+[data-theme=metro] .neo-tile:nth-child(10n+9) { background: #4a6b63; } [data-theme=metro] .neo-tile:nth-child(10n+10) { background: #5b3d96; }
+[data-theme=metro] .neo-tile:hover, [data-theme=metro] .neo-tile.is-focus { box-shadow: none; outline: 3px solid #fff; outline-offset: -3px; }

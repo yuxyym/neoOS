@@ -13,7 +13,7 @@ neo.window.create({ title: 'Settings', width: 820, height: 580, minWidth: 560, m
       if (m.theme) await neo.theme.set(m.theme);
       if (m.wallpaper) await neo.desktop.setWallpaper(m.wallpaper);
       if (m.openWallpaper) {
-        const path = await neo.dialog.openFile({ accept: 'image/*', startPath: '/' });
+        const path = await neo.dialog.openFile({ accept: 'image/*' });
         if (path) await neo.desktop.setWallpaper(path);
       }
       if (m.importFile) {
@@ -21,10 +21,10 @@ neo.window.create({ title: 'Settings', width: 820, height: 580, minWidth: 560, m
           const name = String(m.importFile.name || 'Imported file').replace(/[\\/\0]/g, '_');
           if (!name || name === '.' || name === '..') throw new Error('Invalid file name');
           if (m.importFile.bytes?.byteLength > 50 * 1024 * 1024) throw new Error('Files must be 50 MB or smaller.');
-          const used = new Set((await neo.fs.list('/')).map(e => e.name));
+          const dest = (await neo.system.paths()).downloads, used = new Set((await neo.fs.list(dest)).map(e => e.name));
           const dot = name.lastIndexOf('.'), stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
           let target = name, n = 2; while (used.has(target)) target = `${stem} (${n++})${ext}`;
-          await neo.fs.write(`/${target}`, m.importFile.bytes, m.importFile.type || 'application/octet-stream');
+          await neo.fs.write(`${dest}/${target}`, m.importFile.bytes, m.importFile.type || 'application/octet-stream');
           await w.postMessage({ imported: target });
         };
         importQueue = importQueue.then(saveImport, saveImport); await importQueue;
