@@ -1,0 +1,4 @@
+# Roadmap (not in this delivery)
+Phase 1A/1B remainder: API spec JSON + generated docs, API Explorer, Dev Tools, neoUI docs app, mock OS, contract tests, dogfood lint, more neoUI components, accent colors/high-contrast, RTL audit, permission prompts, intents/services.
+Implemented locally: IndexedDB-backed account-rooted VFS, browser-profile sign-in, system-owned VFS picker, byte-copy file import in Settings, File Manager copy/move/search, Settings (theme, wallpaper, accounts, storage), Calendar, Calculator, Clock, Paint, Notepad, Image Viewer, System Monitor, Log Viewer, and process focus/minimize controls.
+Still deferred: account recovery and admin elevation, tray/workspaces, notifications, store, a full shell for Terminal, true Worker scheduling, app module dependency loading, export to host files, hardened CSP, durable system journal, remaining OS fundamentals, hardware/a11y.

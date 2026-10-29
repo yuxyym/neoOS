@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.system-monitor",
+  "name": "System Monitor",
+  "version": "1.0.0",
+  "description": "Inspect running processes and local storage",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["System"],
+  "permissions": ["process.list", "process.focus", "process.minimize", "process.kill"],
+  "network": [],
+  "instance": "single",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

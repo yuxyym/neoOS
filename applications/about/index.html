@@ -1,51 +1,6 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="UTF-8">
-		<title>About Application</title>
-		<link href="../../resources/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-	</head>
-	<body>
-		<div class="container">
-			<br>
-			<div class="row">
-				<div class="col-4">
-					<img src="../../branding/neoicon.png" alt="neoOS" class="img-fluid">
-				</div>
-				<div class="col-8">
-					<p class="lead"><strong>neoOS</strong> Dev</p>
-					<p>Some features may or may not be available.</p>
-					<hr>
-					<dl class="row">
-						<dt class="col-sm-3">Version</dt>
-						<dd class="col-sm-9">Unknown</dd>
-						<dt class="col-sm-3">Language</dt>
-						<dd class="col-sm-9" id="lang">N/A</dd>
-						<dt class="col-sm-3">Platform</dt>
-						<dd class="col-sm-9" id="platform">N/A</dd>
-						<dt class="col-sm-3">Memory</dt>
-						<dd class="col-sm-9" id="ram">N/A</dd>
-						<dt class="col-sm-3">Screen</dt>
-						<dd class="col-sm-9" id="screen">N/A</dd>
-					</dl>
-				</div>
-			</div>
-		</div>
-		<script>
-			// Language
-			document.getElementById('lang').innerHTML = navigator.language;
-			// RAM
-			document.getElementById('ram').innerHTML = navigator.deviceMemory.toString() + ' GB';
-			// Screen
-			let screenSize = '';
-			if (screen.width) {
-				width = (screen.width) ? screen.width : '';
-				height = (screen.height) ? screen.height : '';
-				screenSize += '' + width + " x " + height;
-			};
-			document.getElementById('screen').innerHTML = screenSize;
-			// Platform
-			document.getElementById("platform").innerHTML = navigator.platform;
-		</script>
-	</body>
-</html>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch this app from neoOS</title>
+<p>This app is launched by neoOS. Open the desktop and select it from the launcher.</p>
+<p><a href="../../index.html">Open neoOS desktop</a></p>

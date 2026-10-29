@@ -1,0 +1,25 @@
+<style>
+body{display:flex;flex-direction:column;height:100vh;overflow:hidden}.sp{flex:1}
+.stage{flex:1;min-height:0;overflow:auto;display:grid;place-items:center;padding:12px;background:repeating-conic-gradient(var(--neo-surface-0) 0 25%,var(--neo-surface-1) 0 50%) 0 0/20px 20px}
+.stage.fit img{max-width:100%;max-height:100%;object-fit:contain}.stage:not(.fit) img{max-width:none}
+img{display:none;image-rendering:auto;box-shadow:var(--neo-shadow-1)}.empty{color:var(--neo-text-muted);text-align:center;background:var(--neo-surface-1);padding:24px 32px;border-radius:12px}
+</style>
+<nav class="neo-toolbar"><button id="pick" class="neo-btn neo-btn--sm">Open…</button><span id="fname" class="u-muted">No image selected</span><span class="sp"></span>
+ <button id="zo" class="neo-btn neo-btn--ghost neo-btn--icon" title="Zoom out (−)">−</button><span id="zl" class="u-muted" style="min-width:48px;text-align:center">Fit</span><button id="zi" class="neo-btn neo-btn--ghost neo-btn--icon" title="Zoom in (+)">+</button><button id="zf" class="neo-btn neo-btn--ghost neo-btn--sm">Fit</button><button id="z1" class="neo-btn neo-btn--ghost neo-btn--sm">100%</button></nav>
+<main class="stage fit" id="stage"><div id="empty" class="empty">Choose an image from your neoOS files.<br><span class="u-muted">Import pictures from Settings → Storage.</span></div><img id="img" alt="Selected image"></main>
+<footer class="neo-statusbar"><span id="dims"></span><span id="err" role="status"></span></footer>
+<script>
+const $=id=>document.getElementById(id);let url=null,zoom=null;
+function apply(){const im=$('img');if(zoom==null){$('stage').classList.add('fit');im.style.width='';$('zl').textContent='Fit'}else{$('stage').classList.remove('fit');im.style.width=(im.naturalWidth*zoom)+'px';$('zl').textContent=Math.round(zoom*100)+'%'}}
+const step=f=>{const cur=zoom??Math.min(1,$('stage').clientWidth/($('img').naturalWidth||1));zoom=Math.max(.05,Math.min(16,cur*f));apply()};
+$('pick').onclick=()=>neoWindow.postMessage({open:true});$('zi').onclick=()=>step(1.25);$('zo').onclick=()=>step(.8);$('zf').onclick=()=>{zoom=null;apply()};$('z1').onclick=()=>{zoom=1;apply()};
+addEventListener('keydown',e=>{if(e.key==='+'||e.key==='=')step(1.25);else if(e.key==='-')step(.8);else if(e.key==='0'){zoom=1;apply()}else if(e.key==='f'){zoom=null;apply()}});
+$('stage').addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();step(e.deltaY<0?1.1:.9)},{passive:false});
+$('img').onload=()=>{$('dims').textContent=`${$('img').naturalWidth} × ${$('img').naturalHeight}`;apply()};
+neoWindow.onMessage(m=>{
+ $('err').textContent='';if(m.error){$('err').textContent=m.error;return}if(!m.content&&!m.bytes)return;
+ if(!m.mime?.startsWith('image/')){$('err').textContent='This file is not recognized as an image. Give it an image extension to open it here.';return}
+ $('fname').textContent=m.name;$('img').alt=m.name;if(url?.startsWith('blob:'))URL.revokeObjectURL(url);
+ url=m.bytes?URL.createObjectURL(new Blob([m.bytes],{type:m.mime})):m.content.startsWith('data:')?m.content:`data:${m.mime};charset=utf-8,${encodeURIComponent(m.content)}`;
+ zoom=null;$('img').src=url;$('img').style.display='block';$('empty').hidden=true});
+</script>

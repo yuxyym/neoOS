@@ -1,0 +1,34 @@
+<style>
+body{height:100vh;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--neo-surface-0)}
+.screen{padding:10px 14px 8px;border-radius:12px;background:var(--neo-surface-1);border:1px solid var(--neo-border);text-align:right;min-height:96px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.expr{font:1.05rem var(--neo-font-mono);color:var(--neo-text-muted);min-height:1.4em;overflow-x:auto;white-space:nowrap}
+.out{font:600 2.3rem var(--neo-font-mono);overflow-x:auto;white-space:nowrap;line-height:1.3}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;flex:1}
+.keys button{font-size:1.25rem;border-radius:10px;border:0;background:var(--neo-surface-3);min-height:0}
+.keys button:hover{background:color-mix(in srgb,var(--neo-surface-3) 75%,var(--neo-text))}.keys button:active{background:var(--neo-pressed)}
+.keys .op{background:color-mix(in srgb,var(--neo-accent) 28%,var(--neo-surface-3))}.keys .num{background:var(--neo-surface-2)}
+.keys .eq{background:var(--neo-accent);color:#fff}.keys .eq:hover{background:var(--neo-accent-hover)}
+</style>
+<div class="screen" aria-live="polite"><div id="expr" class="expr"></div><div id="out" class="out">0</div></div>
+<div class="keys" id="keys"></div>
+<script>
+let ex='';const $=id=>document.getElementById(id);
+const KEYS=['AC','⌫','%','÷','7','8','9','×','4','5','6','−','1','2','3','+','±','0','.','='];
+function evaluate(src){const n=src.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-').replace(/\s/g,'');const tk=n.match(/(?:\d*\.\d+|\d+\.?\d*)|[()+\-*/%]/g)||[];if(!tk.length||tk.join('')!==n)throw Error('Invalid expression');let i=0;
+ function atom(){const t=tk[i++];let v;if(t==='('){v=sum();if(tk[i++]!==')')throw Error('Missing )')}else if(t==='-')return -atom();else if(t==='+')return atom();else{v=Number(t);if(!Number.isFinite(v))throw Error('Invalid expression')}while(tk[i]==='%'){i++;v/=100}return v}
+ function prod(){let v=atom();while(tk[i]==='*'||tk[i]==='/'){const o=tk[i++],b=atom();v=o==='*'?v*b:v/b}return v}
+ function sum(){let v=prod();while(tk[i]==='+'||tk[i]==='-'){const o=tk[i++],b=prod();v=o==='+'?v+b:v-b}return v}
+ const r=sum();if(i!==tk.length||!Number.isFinite(r))throw Error('Invalid expression');return String(Number(r.toPrecision(12)))}
+function show(){$('expr').textContent=ex;let p='';try{if(/[+\-×÷−%]/.test(ex.replace(/^-/,'')))p=evaluate(ex)}catch{}$('out').textContent=p||ex||'0'}
+function press(k){
+ if(ex==='Error')ex='';
+ if(k==='AC')ex='';else if(k==='⌫')ex=ex.slice(0,-1);
+ else if(k==='='){try{ex=evaluate(ex||'0')}catch{ex='Error'}}
+ else if(k==='±')ex=ex.startsWith('-')?ex.slice(1):'-'+ex;
+ else ex+=k;show()}
+KEYS.forEach(k=>{const b=document.createElement('button');b.className=k==='='?'eq':/[÷×−+%]/.test(k)?'op':/\d|\./.test(k)?'num':'';b.textContent=k;b.tabIndex=-1;b.onmousedown=e=>e.preventDefault();b.onclick=()=>press(k);$('keys').append(b)});
+const MAP={'*':'×','/':'÷','-':'−'};
+addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;let k=e.key;
+ if(/^[0-9.+()%]$/.test(k))press(k);else if(MAP[k])press(MAP[k]);else if(k==='Enter'||k==='=')press('=');else if(k==='Backspace')press('⌫');else if(k==='Escape'||k==='Delete')press('AC');else return;e.preventDefault()});
+show();
+</script>

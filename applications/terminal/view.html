@@ -1,0 +1,19 @@
+<style>
+body{background:#0d1014;color:#d7dde4;font:13.5px/1.5 var(--neo-font-mono);padding:10px 12px;height:100vh;overflow:auto;cursor:text}
+#o{white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}.pl{color:#6bd48f}.ln{display:flex;gap:8px}.ln span{white-space:pre}
+input{flex:1;min-width:0;background:none;border:0;color:inherit;font:inherit;outline:0;box-shadow:none;padding:0;user-select:text}
+</style>
+<div id="o">neoOS Terminal. Type “help” for a list of commands.</div>
+<div class="ln"><span id="p" class="pl">$</span><input id="i" autofocus autocomplete="off" spellcheck="false" aria-label="Command"></div>
+<script>
+const $=id=>document.getElementById(id);let h=[],hi=0,wait=false;
+const add=(t,cls)=>{const d=document.createElement('div');if(cls)d.className=cls;d.textContent=t;$('o').append(d)};
+$('i').onkeydown=e=>{
+ if(e.key==='Enter'&&!wait){const v=$('i').value;add($('p').textContent+' '+v,'');if(v.trim()){h.push(v);hi=h.length}$('i').value='';wait=true;neoWindow.postMessage(v)}
+ else if(e.key==='ArrowUp'){e.preventDefault();if(hi>0)$('i').value=h[--hi]}
+ else if(e.key==='ArrowDown'){e.preventDefault();hi=Math.min(h.length,hi+1);$('i').value=h[hi]||''}
+ else if(e.ctrlKey&&e.key==='l'){e.preventDefault();$('o').replaceChildren()}
+ else if(e.ctrlKey&&e.key==='c'){add($('p').textContent+' '+$('i').value+'^C');$('i').value=''}};
+neoWindow.onMessage(m=>{if(m.clear)$('o').replaceChildren();else if(m.out)add(m.out);if(m.prompt)$('p').textContent=m.prompt;wait=false;scrollTo(0,1e9);$('i').focus()});
+addEventListener('click',()=>{if(!getSelection().toString())$('i').focus()});
+</script>

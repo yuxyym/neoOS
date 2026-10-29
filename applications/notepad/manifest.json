@@ -1,0 +1,20 @@
+{
+  "id": "org.neoos.notepad",
+  "name": "Notepad",
+  "version": "1.0.0",
+  "description": "Type some notes",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": [
+    "Utilities"
+  ],
+  "permissions": ["fs.read:~/*", "fs.write:~/*"],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": ["text/*", "application/json"],
+  "intents": [],
+  "contributes": {}
+}

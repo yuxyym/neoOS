@@ -1,0 +1,43 @@
+<style>
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;justify-content:center;padding:10px}
+.panel{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:12px 20px;text-align:center;overflow:auto}
+.digital{font:300 2.6rem var(--neo-font-sans);font-variant-numeric:tabular-nums}.date{color:var(--neo-text-muted)}
+svg.face{width:min(210px,40vh);height:auto}.face .ring{fill:var(--neo-surface-2);stroke:var(--neo-border);stroke-width:2}.face .tick{stroke:var(--neo-text-muted);stroke-width:2}.face .h,.face .m{stroke:var(--neo-text);stroke-linecap:round}.face .s{stroke:var(--neo-accent);stroke-linecap:round}
+.zones{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:100%;max-width:380px}.zones div{padding:8px 12px;border-radius:10px;background:var(--neo-surface-2);text-align:left}.zones b{display:block;font-size:1.2rem;font-variant-numeric:tabular-nums;font-weight:500}.zones small{color:var(--neo-text-muted)}
+.big{font:300 3.4rem var(--neo-font-mono);font-variant-numeric:tabular-nums}.row{display:flex;gap:8px;align-items:center;justify-content:center}.row .neo-input{width:80px;text-align:center}
+.laps{width:100%;max-width:300px;max-height:110px;overflow:auto;font:.9rem var(--neo-font-mono);color:var(--neo-text-muted)}.laps div{display:flex;justify-content:space-between;padding:2px 6px;border-bottom:1px solid var(--neo-hairline)}
+</style>
+<nav class="tabs"><div class="neo-segmented" id="tabs"><button data-t="clock" class="is-active">Clock</button><button data-t="stopwatch">Stopwatch</button><button data-t="timer">Timer</button></div></nav>
+<main class="panel" id="p-clock">
+ <svg class="face" viewBox="-100 -100 200 200" aria-hidden="true"><circle class="ring" r="96"/><g id="ticks"></g><line id="hh" class="h" stroke-width="5" y2="-48"/><line id="mm" class="m" stroke-width="3.5" y2="-72"/><line id="ss" class="s" stroke-width="1.6" y2="-80"/><circle r="4" fill="var(--neo-accent)"/></svg>
+ <div><div id="digital" class="digital"></div><div id="date" class="date"></div></div>
+ <div class="zones" id="zones"></div>
+</main>
+<main class="panel" id="p-stopwatch" hidden><div id="elapsed" class="big">00:00.0</div><div class="row"><button id="swGo" class="neo-btn neo-btn--primary">Start</button><button id="swLap" class="neo-btn" disabled>Lap</button><button id="swReset" class="neo-btn">Reset</button></div><div id="laps" class="laps"></div></main>
+<main class="panel" id="p-timer" hidden><div id="remaining" class="big">05:00</div><div class="row"><input id="mins" class="neo-input" type="number" min="0" max="999" value="5" aria-label="Minutes"><span>min</span><input id="secs" class="neo-input" type="number" min="0" max="59" value="0" aria-label="Seconds"><span>sec</span></div><div class="row"><button id="tmGo" class="neo-btn neo-btn--primary">Start</button><button id="tmReset" class="neo-btn">Reset</button></div></main>
+<script>
+const $=id=>document.getElementById(id),pad=n=>String(n).padStart(2,'0');
+for(let i=0;i<60;i++){const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('class','tick');l.setAttribute('y1',i%5?-90:-84);l.setAttribute('y2',-92);l.setAttribute('transform',`rotate(${i*6})`);l.style.strokeWidth=i%5?1:2.4;$('ticks').append(l)}
+const ZONES=[['UTC','UTC'],['New York','America/New_York'],['London','Europe/London'],['Tokyo','Asia/Tokyo']];
+$('zones').replaceChildren(...ZONES.map(([n])=>{const d=document.createElement('div');d.innerHTML='<small></small><b></b>';d.firstChild.textContent=n;return d}));
+let sw={on:false,start:0,acc:0,laps:[]},tm={on:false,end:0,left:300000,fired:false};
+const fmtSw=ms=>{const t=Math.floor(ms/100),m=Math.floor(t/600),s=Math.floor(t/10)%60;return `${pad(m)}:${pad(s)}.${t%10}`};
+const fmtTm=ms=>{const s=Math.ceil(ms/1000);return `${pad(Math.floor(s/60))}:${pad(s%60)}`};
+function tick(){const d=new Date(),s=d.getSeconds()+d.getMilliseconds()/1000,m=d.getMinutes()+s/60,h=(d.getHours()%12)+m/60;
+ $('hh').setAttribute('transform',`rotate(${h*30})`);$('mm').setAttribute('transform',`rotate(${m*6})`);$('ss').setAttribute('transform',`rotate(${s*6})`);
+ $('digital').textContent=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});$('date').textContent=d.toLocaleDateString([],{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+ [...$('zones').children].forEach((c,i)=>{c.lastChild.textContent=d.toLocaleTimeString([],{timeZone:ZONES[i][1],hour:'2-digit',minute:'2-digit'})});
+ if(sw.on)$('elapsed').textContent=fmtSw(sw.acc+Date.now()-sw.start);
+ if(tm.on){const left=tm.end-Date.now();if(left<=0){tm.on=false;tm.left=0;$('remaining').textContent='00:00';$('tmGo').textContent='Start';neoWindow.postMessage({alarm:true,title:'Timer finished',message:'Your timer has reached zero.'})}else{$('remaining').textContent=fmtTm(left);tm.left=left}}
+ }
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('is-active',x===b));['clock','stopwatch','timer'].forEach(t=>$('p-'+t).hidden=t!==b.dataset.t)});
+$('swGo').onclick=()=>{if(sw.on){sw.acc+=Date.now()-sw.start;sw.on=false;$('swGo').textContent='Resume';$('swLap').disabled=true}else{sw.start=Date.now();sw.on=true;$('swGo').textContent='Pause';$('swLap').disabled=false}};
+$('swLap').onclick=()=>{const t=sw.acc+Date.now()-sw.start;sw.laps.unshift(t);const d=document.createElement('div');d.innerHTML='<span></span><span></span>';d.children[0].textContent='Lap '+(sw.laps.length);d.children[1].textContent=fmtSw(t);$('laps').prepend(d)};
+$('swReset').onclick=()=>{sw={on:false,start:0,acc:0,laps:[]};$('elapsed').textContent='00:00.0';$('swGo').textContent='Start';$('swLap').disabled=true;$('laps').replaceChildren()};
+const setLeft=()=>Math.max(1000,(+$('mins').value||0)*60000+(+$('secs').value||0)*1000);
+$('tmGo').onclick=()=>{if(tm.on){tm.on=false;$('tmGo').textContent='Resume'}else{if(!tm.left||tm.left<=0||$('tmGo').textContent==='Start')tm.left=setLeft();tm.end=Date.now()+tm.left;tm.on=true;$('tmGo').textContent='Pause'}};
+$('tmReset').onclick=()=>{tm.on=false;tm.left=setLeft();$('remaining').textContent=fmtTm(tm.left);$('tmGo').textContent='Start'};
+['mins','secs'].forEach(i=>$(i).oninput=()=>{if(!tm.on&&$('tmGo').textContent==='Start'){tm.left=setLeft();$('remaining').textContent=fmtTm(tm.left)}});
+setInterval(tick,100);tick();
+</script>

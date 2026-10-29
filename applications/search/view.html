@@ -1,0 +1,11 @@
+<style>body{padding:16px;display:flex;flex-direction:column;height:100vh;gap:12px}form{display:flex;gap:8px}#results{flex:1;overflow:auto;margin:0 -6px}
+.res{display:flex;flex-direction:column;align-items:flex-start;width:100%;padding:7px 12px;border:0;border-radius:8px;background:none;text-align:start}.res:hover,.res:focus-visible{background:var(--neo-hover)}.res span{color:var(--neo-text-muted);font-size:.85rem;overflow-wrap:anywhere}</style>
+<form id="form"><input id="q" class="neo-input" placeholder="Search names and text in your files…" aria-label="Search files" autofocus><button class="neo-btn neo-btn--primary">Search</button></form>
+<div id="state" class="u-muted">Searches file names and the text inside notes in your neoOS files.</div><div id="results"></div>
+<script>
+const $=id=>document.getElementById(id);
+$('form').onsubmit=e=>{e.preventDefault();$('state').textContent='Searching…';$('results').replaceChildren();neoWindow.postMessage({query:$('q').value})};
+neoWindow.onMessage(d=>{if(d.error){$('state').textContent=d.error;return}if(!d.results)return;
+ $('state').textContent=d.results.length?`${d.results.length} result${d.results.length===1?'':'s'}`:'Nothing found. Try a different word.';
+ $('results').replaceChildren(...d.results.map(f=>{const b=document.createElement('button');b.className='res';const n=document.createElement('strong'),p=document.createElement('span');n.textContent=(f.type==='directory'?'📁 ':'')+f.name;p.textContent=f.path;b.append(n,p);b.onclick=()=>neoWindow.postMessage(f);return b}))});
+</script>

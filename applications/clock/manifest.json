@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.clock",
+  "name": "Clock",
+  "version": "1.0.0",
+  "description": "World clock, stopwatch, and timer",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["Utilities"],
+  "permissions": [],
+  "network": [],
+  "instance": "single",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

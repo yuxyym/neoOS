@@ -1,38 +1,6 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="UTF-8">
-		<title>Image Viewer Application</title>
-		<link href="../../resources/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-		<style>
-			body {
-				background-color: #000;
-			}
-			div {
-				height: 200px;
-				width: 400px;
-				position: fixed;
-				top: 50%;
-				left: 50%;
-				margin-top: -100px;
-				margin-left: -200px;
-			}
-		</style>
-	</head>
-	<body>
-		<div id="content">
-			<p class="text-muted text-center" id="noimg">No image open.</p>
-		</div>
-		<script>
-			const params = new Proxy(new URLSearchParams(window.location.search), {
-				get: (searchParams, prop) => searchParams.get(prop)
-			});
-			if (params.file) {
-				document.body.style.backgroundImage = "url(\"" + params.file + "\")";
-				document.body.style.backgroundPosition = "center";
-				document.body.style.backgroundRepeat = "no-repeat";
-				document.getElementById("content").remove();
-			}
-		</script>
-	</body>
-</html>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch this app from neoOS</title>
+<p>This app is launched by neoOS. Open the desktop and select it from the launcher.</p>
+<p><a href="../../index.html">Open neoOS desktop</a></p>

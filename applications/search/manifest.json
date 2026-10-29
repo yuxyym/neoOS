@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.search",
+  "name": "Search",
+  "version": "1.0.0",
+  "description": "Search your neoOS files",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["Places"],
+  "permissions": ["fs.read:~/*", "app.launch"],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.calculator",
+  "name": "Calculator",
+  "version": "1.0.0",
+  "description": "A simple calculator for everyday arithmetic",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["Utilities"],
+  "permissions": [],
+  "network": [],
+  "instance": "single",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

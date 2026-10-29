@@ -1,0 +1,11 @@
+<style>body{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:24px;text-align:center}
+h1{margin:6px 0 0;font-size:1.6rem}.tbl{margin-top:14px;width:100%;max-width:360px}.tbl th{width:38%;color:var(--neo-text-muted)}</style>
+<div style="width:84px;height:84px;border-radius:20px;background:linear-gradient(135deg,#6ba0ff,#7a5cff);display:grid;place-items:center" aria-hidden="true"><div style="width:34px;height:34px;background:rgb(255 255 255/.92);transform:rotate(45deg);border-radius:4px"></div></div>
+<h1>neoOS <span id="v" class="u-muted" style="font-weight:400"></span></h1><p class="u-muted" style="margin:0">A desktop that lives in your browser. Open source (GPL-3.0).</p>
+<table class="neo-table tbl"><tr><th>API</th><td id="api">–</td></tr><tr><th>Language</th><td id="l">–</td></tr><tr><th>Platform</th><td id="p">–</td></tr><tr><th>Memory</th><td id="m">N/A</td></tr><tr><th>Screen</th><td id="s">–</td></tr></table>
+<script>
+const $=i=>document.getElementById(i);
+$('l').textContent=navigator.language;$('p').textContent=navigator.platform||'unknown';$('s').textContent=screen.width+' × '+screen.height;
+if(navigator.deviceMemory)$('m').textContent=navigator.deviceMemory+' GB';
+neoWindow.onMessage(i=>{$('v').textContent=i.version;$('api').textContent=i.api});
+</script>

@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.log-viewer",
+  "name": "Log Viewer",
+  "version": "1.0.0",
+  "description": "View recent local neoOS system and app events",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["System"],
+  "permissions": ["log.read"],
+  "network": [],
+  "instance": "single",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

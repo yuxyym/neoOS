@@ -1,0 +1,20 @@
+{
+  "id": "org.neoos.about",
+  "name": "About",
+  "version": "1.0.0",
+  "description": "About neoOS",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": [
+    "System"
+  ],
+  "permissions": [],
+  "network": [],
+  "instance": "single",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

@@ -1,0 +1,22 @@
+{
+  "id": "org.neoos.image-viewer",
+  "name": "Image Viewer",
+  "version": "1.0.0",
+  "description": "View images",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": [
+    "Media"
+  ],
+  "permissions": [
+    "fs.read:~/*"
+  ],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": ["image/*"],
+  "intents": [],
+  "contributes": {}
+}

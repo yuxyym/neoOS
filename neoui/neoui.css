@@ -1,0 +1,79 @@
+/* neoUI 2.0: tokens -> base -> components -> utilities. Used inside app windows and the shell.
+   Shell chrome (panel, dock, windows, lock screen) lives in shell.css. Naming: neo-block__elem--modifier, u-* utilities. */
+@layer neo.tokens, neo.base, neo.components, neo.utilities;
+@layer neo.tokens {
+  :root, [data-theme=dark] { color-scheme: dark;
+    --neo-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", sans-serif;
+    --neo-font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+    --neo-space-1: .25rem; --neo-space-2: .5rem; --neo-space-3: .75rem; --neo-space-4: 1rem; --neo-space-6: 1.5rem;
+    --neo-radius-sm: 5px; --neo-radius-md: 7px; --neo-radius-lg: 11px; --neo-text-sm: .875rem; --neo-dur: .12s;
+    --neo-surface-0: #171a1e; --neo-surface-1: #20242a; --neo-surface-2: #2a2f36; --neo-surface-3: #363c45;
+    --neo-text: #e9ecf0; --neo-text-muted: #98a2ae; --neo-border: #353b43; --neo-hairline: rgb(255 255 255 / .07);
+    --neo-accent: #4c8dff; --neo-accent-hover: #6ba0ff; --neo-on-accent: #fff; --neo-danger: #e5484d; --neo-success: #30a46c;
+    --neo-hover: rgb(255 255 255 / .08); --neo-pressed: rgb(255 255 255 / .14);
+    --neo-focus-ring: 0 0 0 2px rgb(76 141 255 / .55);
+    --neo-shadow-1: 0 2px 8px rgb(0 0 0 / .35); --neo-shadow-2: 0 14px 36px rgb(0 0 0 / .5); }
+  [data-theme=light] { color-scheme: light;
+    --neo-surface-0: #e8eaee; --neo-surface-1: #ffffff; --neo-surface-2: #f3f4f7; --neo-surface-3: #e2e5ea;
+    --neo-text: #1b1f24; --neo-text-muted: #65707c; --neo-border: #d2d7de; --neo-hairline: rgb(0 0 0 / .08);
+    --neo-accent: #2f6fed; --neo-accent-hover: #4a84f5;
+    --neo-hover: rgb(0 0 0 / .06); --neo-pressed: rgb(0 0 0 / .11);
+    --neo-focus-ring: 0 0 0 2px rgb(47 111 237 / .45);
+    --neo-shadow-1: 0 2px 8px rgb(0 0 0 / .12); --neo-shadow-2: 0 14px 36px rgb(0 0 0 / .25); }
+}
+@layer neo.base {
+  *, ::before, ::after { box-sizing: border-box; }
+  html { font-size: 14px; -webkit-text-size-adjust: 100%; }
+  html, body { margin: 0; height: 100%; }
+  body { font: 1rem/1.45 var(--neo-font-sans); background: var(--neo-surface-1); color: var(--neo-text); container-type: inline-size;
+    cursor: default; user-select: none; -webkit-user-select: none; -webkit-font-smoothing: antialiased; }
+  input, textarea, [contenteditable], .u-select { user-select: text; -webkit-user-select: text; cursor: text; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: default; }
+  img { -webkit-user-drag: none; }
+  a { color: var(--neo-accent); } hr { border: 0; border-top: 1px solid var(--neo-border); margin: var(--neo-space-4) 0; }
+  :focus-visible { outline: none; box-shadow: var(--neo-focus-ring); }
+  ::selection { background: var(--neo-accent); color: var(--neo-on-accent); }
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--neo-text) 25%, transparent) transparent; }
+  @media (prefers-reduced-motion: reduce) { *, ::before, ::after { transition: none !important; animation: none !important; } }
+}
+@layer neo.components {
+  .neo-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--neo-space-2); min-height: 28px; padding: 0 .85rem;
+    border-radius: var(--neo-radius-md); border: 1px solid var(--neo-border); background: var(--neo-surface-3); color: var(--neo-text);
+    transition: background var(--neo-dur), border-color var(--neo-dur); white-space: nowrap; }
+  .neo-btn:hover { background: color-mix(in srgb, var(--neo-surface-3) 80%, var(--neo-text)); }
+  .neo-btn:active { background: var(--neo-pressed); }
+  .neo-btn:disabled { opacity: .45; pointer-events: none; }
+  .neo-btn--primary { background: var(--neo-accent); border-color: color-mix(in srgb, var(--neo-accent) 75%, #000); color: var(--neo-on-accent); }
+  .neo-btn--primary:hover { background: var(--neo-accent-hover); } .neo-btn--primary:active { background: color-mix(in srgb, var(--neo-accent) 85%, #000); }
+  .neo-btn--danger { background: var(--neo-danger); border-color: transparent; color: #fff; } .neo-btn--danger:hover { background: color-mix(in srgb, var(--neo-danger) 85%, #fff); }
+  .neo-btn--ghost { background: transparent; border-color: transparent; } .neo-btn--ghost:hover { background: var(--neo-hover); }
+  .neo-btn--ghost.is-active { background: var(--neo-pressed); }
+  .neo-btn--sm { min-height: 24px; padding: 0 .55rem; font-size: var(--neo-text-sm); }
+  .neo-btn--icon { width: 28px; padding: 0; font-size: 1.15rem; line-height: 1; }
+  .neo-input { width: 100%; min-height: 28px; padding: 0 var(--neo-space-3); border-radius: var(--neo-radius-md); border: 1px solid var(--neo-border); background: var(--neo-surface-0); color: var(--neo-text); }
+  .neo-input:focus { outline: none; border-color: var(--neo-accent); box-shadow: var(--neo-focus-ring); }
+  textarea.neo-input { padding: var(--neo-space-2) var(--neo-space-3); }
+  .neo-card { background: var(--neo-surface-2); border: 1px solid var(--neo-border); border-radius: var(--neo-radius-lg); padding: var(--neo-space-4); }
+  .neo-table { width: 100%; border-collapse: collapse; font-size: var(--neo-text-sm); }
+  .neo-table th { text-align: start; font-weight: 600; color: var(--neo-text-muted); padding: 6px var(--neo-space-3); border-block-end: 1px solid var(--neo-border); }
+  .neo-table td { text-align: start; padding: 6px var(--neo-space-3); border-block-end: 1px solid var(--neo-hairline); }
+  .neo-table tbody tr:hover { background: var(--neo-hover); }
+  .neo-toolbar { display: flex; align-items: center; gap: var(--neo-space-2); padding: 6px var(--neo-space-3); background: var(--neo-surface-0); border-block-end: 1px solid var(--neo-border); }
+  .neo-statusbar { display: flex; align-items: center; justify-content: space-between; gap: var(--neo-space-4); min-height: 24px; padding: 2px var(--neo-space-3); background: var(--neo-surface-0); border-block-start: 1px solid var(--neo-border); color: var(--neo-text-muted); font-size: .85rem; }
+  .neo-sidebar { display: flex; flex-direction: column; gap: 2px; width: 176px; flex: none; padding: var(--neo-space-3) var(--neo-space-2); background: var(--neo-surface-0); border-inline-end: 1px solid var(--neo-border); overflow: auto; }
+  .neo-sidebar__label { padding: var(--neo-space-3) var(--neo-space-3) var(--neo-space-1); font-size: .8rem; font-weight: 600; color: var(--neo-text-muted); }
+  .neo-sidebar__item { display: flex; align-items: center; gap: var(--neo-space-3); width: 100%; height: 30px; padding: 0 var(--neo-space-3); border: 0; border-radius: var(--neo-radius-md); background: none; text-align: start; }
+  .neo-sidebar__item:hover { background: var(--neo-hover); } .neo-sidebar__item.is-active { background: var(--neo-pressed); font-weight: 600; }
+  .neo-segmented { display: inline-flex; padding: 2px; gap: 2px; border-radius: 9px; background: var(--neo-surface-0); border: 1px solid var(--neo-border); }
+  .neo-segmented > button { min-height: 24px; padding: 0 .8rem; border: 0; border-radius: 7px; background: none; }
+  .neo-segmented > button:hover { background: var(--neo-hover); } .neo-segmented > button.is-active { background: var(--neo-surface-3); box-shadow: var(--neo-shadow-1); }
+  .neo-avatar { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--neo-accent); color: #fff; font-weight: 600; text-transform: uppercase; }
+  .neo-spinner { width: 2.4rem; height: 2.4rem; border-radius: 50%; border: .25rem solid var(--neo-surface-3); border-top-color: var(--neo-accent); animation: neo-spin .8s linear infinite; }
+  @keyframes neo-spin { to { transform: rotate(360deg); } }
+  .neo-center { position: fixed; inset: 0; display: grid; place-items: center; z-index: 30000; background: var(--neo-surface-0); }
+}
+@layer neo.utilities {
+  .u-muted { color: var(--neo-text-muted); } .u-flex { display: flex; } .u-col { flex-direction: column; } .u-gap-2 { gap: var(--neo-space-2); } .u-gap-4 { gap: var(--neo-space-4); }
+  .u-p-4 { padding: var(--neo-space-4); } .u-mono { font-family: var(--neo-font-mono); } .u-grow { flex: 1; } .u-center { text-align: center; }
+}

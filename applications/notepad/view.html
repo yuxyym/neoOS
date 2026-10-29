@@ -1,0 +1,34 @@
+<style>
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+textarea{flex:1;min-height:0;width:100%;border:0;resize:none;padding:16px 20px;background:var(--neo-surface-1);color:var(--neo-text);font:15px/1.6 var(--neo-font-mono);outline:none;tab-size:4}
+textarea:focus-visible{box-shadow:none}
+.sp{flex:1}
+</style>
+<nav class="neo-toolbar">
+  <button id="bOpen" class="neo-btn neo-btn--ghost neo-btn--sm" title="Open (Ctrl+O)">Open…</button>
+  <button id="bSave" class="neo-btn neo-btn--primary neo-btn--sm" title="Save (Ctrl+S)">Save</button>
+  <button id="bAs" class="neo-btn neo-btn--ghost neo-btn--sm" title="Save a copy (Ctrl+Shift+S)">Save as new</button>
+  <span class="sp"></span>
+  <button id="bWrap" class="neo-btn neo-btn--ghost neo-btn--sm is-active" title="Toggle word wrap">Wrap</button>
+</nav>
+<textarea id="text" placeholder="Start typing…" spellcheck="true"></textarea>
+<footer class="neo-statusbar"><span id="info">Ln 1, Col 1</span><span id="where">Not saved yet</span></footer>
+<script>
+const $=id=>document.getElementById(id),text=$('text');let base='',readOnly=false;
+const stats=()=>{const v=text.value,p=text.value.slice(0,text.selectionStart).split('\n');
+ $('info').textContent=`Ln ${p.length}, Col ${p[p.length-1].length+1} · ${(v.match(/\S+/g)||[]).length} words · ${v.length} chars`;
+ neoWindow.postMessage({stats:{words:(v.match(/\S+/g)||[]).length,dirty:!readOnly&&v!==base}})};
+const save=as=>{if(!readOnly)neoWindow.postMessage({save:text.value,saveAs:!!as})};
+$('bOpen').onclick=()=>neoWindow.postMessage({open:true});$('bSave').onclick=()=>save(false);$('bAs').onclick=()=>save(true);
+$('bWrap').onclick=e=>{const on=text.style.whiteSpace!=='pre';text.style.whiteSpace=on?'pre':'pre-wrap';text.wrap=on?'off':'soft';e.currentTarget.classList.toggle('is-active',!on)};
+['input','keyup','click'].forEach(ev=>text.addEventListener(ev,stats));
+text.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=text.selectionStart;text.setRangeText('\t',s,text.selectionEnd,'end');stats()}});
+document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase();if(k==='s'){e.preventDefault();save(e.shiftKey)}if(k==='o'){e.preventDefault();neoWindow.postMessage({open:true})}});
+neoWindow.onMessage(m=>{
+ if(m.load){readOnly=!!m.readOnly;base=m.load.content??new TextDecoder().decode(m.load.bytes||new Uint8Array());text.value=base;text.readOnly=readOnly;$('bSave').disabled=$('bAs').disabled=readOnly;
+  $('where').textContent=readOnly?'Read-only binary file':m.load.path;stats();return}
+ if(m.saved){base=text.value;$('where').textContent='Saved to '+m.saved;stats();return}
+ if(m.error)$('where').textContent=m.error;
+});
+text.focus();
+</script>

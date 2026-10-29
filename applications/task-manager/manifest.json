@@ -1,0 +1,25 @@
+{
+  "id": "org.neoos.task-manager",
+  "name": "Task Manager",
+  "version": "1.0.0",
+  "description": "See and end running apps",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": [
+    "System"
+  ],
+  "permissions": [
+    "process.list",
+    "process.focus",
+    "process.minimize",
+    "process.kill"
+  ],
+  "network": [],
+  "instance": "single",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

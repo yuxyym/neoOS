@@ -1,0 +1,8 @@
+<style>.actions{display:flex;gap:4px}.actions button{padding:3px 7px}.app{font-weight:600}.sub{display:block;color:var(--neo-text-muted);font-size:.8rem}</style>
+<div class="u-p-4"><table class="neo-table"><thead><tr><th>Process</th><th>PID</th><th>Windows</th><th>Uptime</th><th>Actions</th></tr></thead><tbody id="b"></tbody></table></div>
+<script>
+neoWindow.onMessage(({procs})=>b.replaceChildren(...procs.map(p=>{const r=document.createElement('tr'),app=document.createElement('td'),pid=document.createElement('td'),wins=document.createElement('td'),uptime=document.createElement('td'),actions=document.createElement('td');
+const name=document.createElement('span'),id=document.createElement('span');name.className='app';name.textContent=p.name;id.className='sub';id.textContent=p.appId;app.append(name,id);pid.textContent=p.pid;wins.textContent=p.windows;uptime.textContent=Math.round((Date.now()-p.started)/1000)+'s';actions.className='actions';
+for(const [label,kind,css] of [['Focus','focus',''],['Minimize','minimize',''],['End','kill','neo-btn--danger']]){const k=document.createElement('button');k.className='neo-btn neo-btn--sm '+css;k.textContent=label;k.onclick=()=>neoWindow.postMessage({[kind]:p.pid});actions.append(k)}
+r.append(app,pid,wins,uptime,actions);return r})));
+</script>

@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.paint",
+  "name": "Paint",
+  "version": "1.0.1",
+  "description": "Draw and save simple pictures",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["Graphics"],
+  "permissions": ["fs.read:~/*", "fs.write:~/*"],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}

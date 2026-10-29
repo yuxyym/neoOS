@@ -1,45 +1,6 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<meta charset="UTF-8">
-		<title>Terminal Application</title>
-		<link rel="stylesheet" href="./jquery.terminal.min.css">
-		<style>
-			body {
-				margin: 0;
-				height: 100%;
-			}
-			#terminal {
-				height: 100%;
-			}
-		</style>
-	</head>
-	<body>
-		<div id="terminal"></div>
-		<script src="../../resources/js/jquery-3.6.1.min.js"></script>
-		<script src="./jquery.terminal.min.js"></script>
-		<script>
-			let __EVAL = (s) => eval(`void (__EVAL = ${__EVAL}); ${s}`);
-			$(function() {
-				$('#terminal').terminal(function(command) {
-					if (command !== '') {
-						try {
-							var result = __EVAL(command);
-							if (result !== undefined) {
-								this.echo(new String(result));
-							}
-						} catch(e) {
-							this.error(new String(e));
-						}
-					} else {
-						this.echo('');
-					}
-				}, {
-					greetings: 'neoOS Terminal',
-					name: 'neoterminal',
-					prompt: '> '
-				});
-			});
-		</script>
-	</body>
-</html>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launch this app from neoOS</title>
+<p>This app is launched by neoOS. Open the desktop and select it from the launcher.</p>
+<p><a href="../../index.html">Open neoOS desktop</a></p>

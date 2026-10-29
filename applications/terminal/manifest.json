@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.terminal",
+  "name": "Terminal",
+  "version": "1.1.0",
+  "description": "Run a command",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["System"],
+  "permissions": ["app.launch", "process.list", "process.kill", "theme.set", "fs.read:~/*", "fs.write:~/*"],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": [],
+  "intents": [],
+  "contributes": {}
+}
