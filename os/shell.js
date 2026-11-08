@@ -7,8 +7,8 @@ import { initNotifications } from './notifications.js';
 import { soundsEnabled, setSoundsEnabled } from './sound.js';
 import * as host from './host.js';
 
-const DEFAULT_DOCK = ['org.neoos.browser', 'org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.calendar', 'org.neoos.calculator', 'org.neoos.settings'];
-const DESKTOP_ICONS = ['org.neoos.browser', 'org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.terminal', 'org.neoos.settings'];
+const DEFAULT_DOCK = ['org.neoos.browser', 'org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.calendar', 'org.neoos.clock', 'org.neoos.calculator', 'org.neoos.task-manager', 'org.neoos.settings'];
+const DESKTOP_ICONS = ['org.neoos.browser', 'org.neoos.file-manager', 'org.neoos.notepad', 'org.neoos.terminal', 'org.neoos.clock', 'org.neoos.settings'];
 const el = (tag, cls = '', text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
 const avatar = u => { const a = el('span', 'neo-avatar', (u.displayName || u.username || '?')[0]); a.style.background = `hsl(${hue(u.username)} 52% 46%)`; return a; };
@@ -128,6 +128,29 @@ function renderDock() {
 
 /* ---------- panel and quick settings ---------- */
 const logoSrc = () => (document.documentElement.dataset.theme !== 'dark' ? 'branding/neoicon.png' : 'branding/neoiconwhite.png');
+const systemState = { wifiOn: true, bluetoothOn: true, volume: 68, battery: 82, charging: true };
+function readSystemState() {
+  const savedVolume = Number(localStorage.getItem('neoos.volume') || '68');
+  const savedWifi = localStorage.getItem('neoos.wifi') !== 'off';
+  const savedBt = localStorage.getItem('neoos.bluetooth') !== 'off';
+  systemState.volume = Number.isFinite(savedVolume) ? Math.max(0, Math.min(100, savedVolume)) : 68;
+  systemState.wifiOn = savedWifi;
+  systemState.bluetoothOn = savedBt;
+  if (navigator.getBattery) {
+    navigator.getBattery().then(b => {
+      systemState.battery = Math.round(b.level * 100);
+      systemState.charging = !!b.charging;
+      updateSystemStatus();
+    }).catch(() => {});
+  }
+  updateSystemStatus();
+}
+function updateSystemStatus() {
+  if (!statusGroup) return;
+  wifiStatus.textContent = systemState.wifiOn ? 'Wi‑Fi' : 'Wi‑Fi off';
+  batteryStatus.textContent = `${systemState.battery}%` + (systemState.charging ? '⚡' : '');
+  volumeStatus.textContent = `Vol ${systemState.volume}%`;
+}
 function openQuick(btn) {
   if (skipToggle === btn) { skipToggle = null; return; }
   closeMenus();
@@ -135,8 +158,23 @@ function openQuick(btn) {
   info.append(el('strong', '', me.displayName || me.username), el('div', 'u-muted', `@${me.username} · ${me.role}`)); head.append(avatar(me), info);
   const seg = (labels, current, onPick) => { const s = el('div', 'neo-segmented'); for (const [value, label] of labels) { const b = el('button', value === current ? 'is-active' : '', label); b.type = 'button'; b.onclick = () => { onPick(value); s.querySelectorAll('button').forEach(x => x.classList.toggle('is-active', x === b)); }; s.append(b); } return s; };
   const soundRow = el('div', 'neo-pop__row'); soundRow.append(el('span', '', 'System sounds'), seg([[true, 'On'], [false, 'Off']], soundsEnabled(), v => setSoundsEnabled(v)));
+  const wifiRow = el('div', 'neo-pop__row');
+  const wifiButton = el('button', 'neo-ctx__item', systemState.wifiOn ? 'Wi‑Fi: On' : 'Wi‑Fi: Off');
+  wifiButton.type = 'button'; wifiButton.onclick = () => { systemState.wifiOn = !systemState.wifiOn; localStorage.setItem('neoos.wifi', systemState.wifiOn ? 'on' : 'off'); wifiButton.textContent = systemState.wifiOn ? 'Wi‑Fi: On' : 'Wi‑Fi: Off'; updateSystemStatus(); };
+  wifiRow.append(el('span', '', 'Network'), wifiButton);
+  const btRow = el('div', 'neo-pop__row');
+  const btButton = el('button', 'neo-ctx__item', systemState.bluetoothOn ? 'Bluetooth: On' : 'Bluetooth: Off');
+  btButton.type = 'button'; btButton.onclick = () => { systemState.bluetoothOn = !systemState.bluetoothOn; localStorage.setItem('neoos.bluetooth', systemState.bluetoothOn ? 'on' : 'off'); btButton.textContent = systemState.bluetoothOn ? 'Bluetooth: On' : 'Bluetooth: Off'; updateSystemStatus(); };
+  btRow.append(el('span', '', 'Bluetooth'), btButton);
+  const volumeWrap = el('label', 'neo-pop__row neo-pop__slider');
+  const volumeLabel = el('span', '', 'Volume');
+  const slider = el('input', 'neo-pop__range'); slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.value = String(systemState.volume);
+  slider.oninput = () => { systemState.volume = Number(slider.value); localStorage.setItem('neoos.volume', String(systemState.volume)); updateSystemStatus(); };
+  volumeWrap.append(volumeLabel, slider);
   const item = (label, action) => { const b = el('button', 'neo-ctx__item', label); b.type = 'button'; b.onclick = () => { closeMenus(); action(); }; return b; };
-  m.append(head, soundRow, el('div', 'neo-ctx__sep'));
+  const summary = el('div', 'neo-panel__status neo-panel__status--menu');
+  summary.append(el('span', 'neo-status-pill', systemState.wifiOn ? 'Wi‑Fi' : 'Wi‑Fi off'), el('span', 'neo-status-pill', `${systemState.battery}%`), el('span', 'neo-status-pill', `Vol ${systemState.volume}%`));
+  m.append(head, summary, soundRow, wifiRow, btRow, volumeWrap, el('div', 'neo-ctx__sep'));
   if (registry.has('org.neoos.settings')) m.append(item('Settings…', () => startApp('org.neoos.settings')));
   if (registry.has('org.neoos.system-monitor')) m.append(item('System Monitor…', () => startApp('org.neoos.system-monitor')));
   m.append(item('Lock screen', lock));
@@ -147,8 +185,8 @@ async function lock() {
   try { const next = await onLockFn?.(); if (next) setUser(next); }
   catch (error) { await showAlert({ title: 'Unable to lock session', message: error.message }); }
 }
-function setUser(u) { me = u; loadFavorites(); dockSig = ''; buildTray(); renderDock(); }
-let tray, appName, logo, clockBtn;
+function setUser(u) { me = u; loadFavorites(); dockSig = ''; buildTray(); renderDock(); readSystemState(); }
+let tray, appName, logo, clockBtn, statusGroup, wifiStatus, batteryStatus, volumeStatus;
 function buildTray() { tray.replaceChildren(avatar(me), el('span', '', me.displayName || me.username)); }
 function refresh() {
   const w = wm.list().find(x => x.id === wm.activeId()), app = w && registry.get(procs.get(w.pid)?.appId);
@@ -182,9 +220,14 @@ export function initShell({ user, onLock } = {}) {
   const launchBtn = el('button', 'neo-panel__btn'); launchBtn.type = 'button'; launchBtn.title = 'Applications (Alt+Space)'; launchBtn.setAttribute('aria-label', 'Applications');
   logo = new Image(16, 16); logo.alt = ''; appName = el('span', 'neo-panel__app', 'neoOS'); launchBtn.append(logo, appName); launchBtn.onclick = openLauncher; left.append(launchBtn);
   clockBtn = el('button', 'neo-panel__btn'); clockBtn.type = 'button'; clockBtn.title = 'Open Calendar'; clockBtn.onclick = () => registry.has('org.neoos.calendar') && startApp('org.neoos.calendar'); center.append(clockBtn);
-  tray = el('button', 'neo-panel__btn'); tray.type = 'button'; tray.setAttribute('aria-haspopup', 'menu'); tray.setAttribute('aria-expanded', 'false'); tray.onclick = () => openQuick(tray); right.append(tray);
+  statusGroup = el('div', 'neo-panel__status');
+  wifiStatus = el('span', 'neo-status-pill', 'Wi‑Fi');
+  batteryStatus = el('span', 'neo-status-pill', '82%');
+  volumeStatus = el('span', 'neo-status-pill', 'Vol 68%');
+  statusGroup.append(wifiStatus, batteryStatus, volumeStatus);
+  tray = el('button', 'neo-panel__btn'); tray.type = 'button'; tray.setAttribute('aria-haspopup', 'menu'); tray.setAttribute('aria-expanded', 'false'); tray.onclick = () => openQuick(tray); right.append(statusGroup, tray);
   panel.replaceChildren(left, center, right); panel.hidden = false; dock.hidden = false;
-  buildDesktop(); loadFavorites(); buildTray(); refresh();
+  buildDesktop(); loadFavorites(); buildTray(); readSystemState(); refresh();
   wm.hooks.onChange = refresh;
   new MutationObserver(refresh).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   document.addEventListener('keydown', e => {

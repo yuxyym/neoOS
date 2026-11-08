@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.media-player",
+  "name": "Media Player",
+  "version": "1.0.0",
+  "description": "Play audio and video files, with previous/next through the folder",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["Media"],
+  "permissions": ["browser", "fs.read:~/*"],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": ["audio/*", "video/*"],
+  "intents": [],
+  "contributes": {}
+}

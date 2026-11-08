@@ -2,7 +2,7 @@
 let win, id = null, buf = '', timer = null, started = false;
 const launched = new Promise(r => neo.on('launch', a => r(a || {})));
 const flush = () => { clearTimeout(timer); timer = null; if (!buf || !win) return; const data = buf; buf = ''; win.postMessage({ data }).catch(() => {}); };
-neo.on('pty:data', ({ data }) => { buf += data; if (buf.length > 32768) flush(); else if (!timer) timer = setTimeout(flush, 10); }); // batch output to stay under the call rate limit
+neo.on('pty:data', ({ data }) => { buf += data; if (buf.length > 16384) flush(); else if (!timer) timer = setTimeout(flush, 2); }); // keep flushing fast enough for responsive terminals
 neo.on('pty:exit', () => { flush(); win?.close(); });
 neo.window.create({ title: 'Terminal', width: 820, height: 520, minWidth: 360, minHeight: 220, content: { file: 'view.html' } }).then(w => {
   win = w;

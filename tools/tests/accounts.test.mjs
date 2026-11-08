@@ -1,0 +1,27 @@
+// Tests os/accounts.js account management (create, sign in, change password, rename, remove). Usage: node tools/tests/accounts.test.mjs
+import assert from 'node:assert/strict';
+const store = new Map();
+globalThis.localStorage = { getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k), get length() { return store.size; }, key: i => [...store.keys()][i] };
+Object.defineProperty(globalThis.localStorage, 'keys', { value: () => [...store.keys()] });
+const realKeys = Object.keys; Object.keys = o => (o === globalThis.localStorage ? [...store.keys()] : realKeys(o));
+const A = await import('../../os/accounts.js');
+const admin = await A.createAccount({ username: 'Admin', displayName: 'Admin', password: 'password1' });
+assert.equal(admin.role, 'admin'); assert.equal(admin.username, 'admin');
+const bob = await A.createAccount({ username: 'bob', displayName: 'Bob', password: 'bobpass123' });
+assert.equal(bob.role, 'user');
+await assert.rejects(A.createAccount({ username: 'bob', password: 'bobpass123' }), /already exists/);
+await assert.rejects(A.createAccount({ username: 'x', password: 'bobpass123' }), /Username/);
+await assert.rejects(A.createAccount({ username: 'carol', password: 'short' }), /8 characters/);
+assert.equal((await A.signIn('bob', 'bobpass123')).id, bob.id);
+await assert.rejects(A.signIn('bob', 'nope'), /incorrect/);
+await assert.rejects(A.changePassword(bob.id, 'wrong', 'newpass123'), /current password/);
+await assert.rejects(A.changePassword(bob.id, 'bobpass123', 'short'), /8 characters/);
+await A.changePassword(bob.id, 'bobpass123', 'newpass123');
+await assert.rejects(A.signIn('bob', 'bobpass123'), /incorrect/); assert.equal((await A.signIn('bob', 'newpass123')).username, 'bob');
+assert.equal(A.renameAccount(bob.id, '  Bobby  ').displayName, 'Bobby'); assert.throws(() => A.renameAccount(bob.id, '  '), /empty/);
+assert.equal(A.listAccounts().find(a => a.id === bob.id).displayName, 'Bobby');
+store.set(`neoos.prefs.${bob.id}`, '{}'); store.set(`neoos.appdata.${bob.id}.org.x.k`, '1'); store.set(`neoos.prefs.${admin.id}`, '{}');
+assert.throws(() => A.removeAccount(admin.id), /Administrator/);
+A.removeAccount(bob.id);
+assert.equal(A.listAccounts().length, 1); assert(!store.has(`neoos.prefs.${bob.id}`) && !store.has(`neoos.appdata.${bob.id}.org.x.k`)); assert(store.has(`neoos.prefs.${admin.id}`), 'admin settings kept');
+console.log('accounts tests passed');

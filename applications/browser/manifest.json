@@ -12,7 +12,7 @@
   "instance": "multi",
   "autostart": false,
   "exitWhenLastWindowCloses": true,
-  "associations": [],
+  "associations": ["text/html", "application/xhtml+xml", ".html", ".htm"],
   "intents": [],
   "contributes": {}
 }

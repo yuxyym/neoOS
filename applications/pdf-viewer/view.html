@@ -1,0 +1,9 @@
+<style>body{height:100vh;overflow:hidden}.bar{display:flex;align-items:center;gap:8px;height:40px;padding:0 8px;background:var(--neo-surface-0);border-bottom:1px solid var(--neo-border)}.bar span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msg{display:grid;place-items:center;height:calc(100vh - 40px)}</style>
+<div class="bar"><button id="o" class="neo-btn neo-btn--sm">Open…</button><span id="n" class="u-muted">No document</span><button id="x" class="neo-btn neo-btn--sm" disabled>Open with system viewer</button></div>
+<div class="msg u-muted" id="m">Choose a PDF with “Open…”</div>
+<script>
+const $=id=>document.getElementById(id);
+$('o').onclick=()=>neoWindow.postMessage({open:true});$('x').onclick=()=>neoWindow.postMessage({external:true});
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='o'){e.preventDefault();neoWindow.postMessage({open:true})}});
+neoWindow.onMessage(m=>{if(m.name){$('n').textContent=m.path;$('x').disabled=false;$('m').textContent='Loading…'}});
+</script>

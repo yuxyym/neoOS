@@ -5,8 +5,9 @@ const KEY = 'neoos.accounts.v1';
 const users = () => { try { const data = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(data) ? data : []; } catch { return []; } };
 const save = list => localStorage.setItem(KEY, JSON.stringify(list));
 const publicUser = u => ({ id: u.id, username: u.username, displayName: u.displayName, role: u.role });
+const fail = (code, message) => Object.assign(new Error(message), { code });
 async function digest(password, salt) {
-  if (!crypto?.subtle) throw Object.assign(new Error('Password hashing is unavailable in this browser context.'), { code: 'ENOTSUP' });
+  if (!crypto?.subtle) throw fail('ENOTSUP', 'Password hashing is unavailable in this browser context.');
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, key, 256);
   return [...new Uint8Array(bits)].map(n => n.toString(16).padStart(2, '0')).join('');
@@ -16,9 +17,9 @@ const saltBytes = s => new Uint8Array(s.match(/.{2}/g).map(x => parseInt(x, 16))
 export function listAccounts() { return users().map(publicUser); }
 export async function createAccount({ username, displayName, password }) {
   username = String(username || '').trim().toLowerCase(); displayName = String(displayName || username).trim();
-  if (!/^[a-z0-9_-]{3,24}$/.test(username)) throw Object.assign(new Error('Username must be 3–24 characters using letters, numbers, _ or -.'), { code: 'EINVAL' });
-  if (String(password || '').length < 8) throw Object.assign(new Error('Password must be at least 8 characters.'), { code: 'EINVAL' });
-  const list = users(); if (list.some(u => u.username === username)) throw Object.assign(new Error('That username already exists.'), { code: 'EEXIST' });
+  if (!/^[a-z0-9_-]{3,24}$/.test(username)) throw fail('EINVAL', 'Username must be 3–24 characters using letters, numbers, _ or -.');
+  if (String(password || '').length < 8) throw fail('EINVAL', 'Password must be at least 8 characters.');
+  const list = users(); if (list.some(u => u.username === username)) throw fail('EEXIST', 'That username already exists.');
   const salt = new Uint8Array(16); crypto.getRandomValues(salt);
   const randomId = crypto.randomUUID ? crypto.randomUUID() : saltText(crypto.getRandomValues(new Uint8Array(16)));
   const user = { id: list.length ? `u-${randomId}` : 'user', username, displayName, role: list.length ? 'user' : 'admin', salt: saltText(salt), hash: await digest(password, salt) };
@@ -27,8 +28,27 @@ export async function createAccount({ username, displayName, password }) {
 export async function signIn(username, password) {
   const user = users().find(u => u.username === String(username || '').trim().toLowerCase());
   if (!user || await digest(String(password || ''), saltBytes(user.salt)) !== user.hash)
-    throw Object.assign(new Error('The username or password is incorrect.'), { code: 'EACCES' });
+    throw fail('EACCES', 'The username or password is incorrect.');
   await vfs.ensureHome(user.id, user.username); return publicUser(user);
+}
+export async function changePassword(id, oldPassword, newPassword) {
+  const list = users(), user = list.find(u => u.id === id); if (!user) throw fail('ENOENT', 'No such account.');
+  if (await digest(String(oldPassword || ''), saltBytes(user.salt)) !== user.hash) throw fail('EACCES', 'The current password is incorrect.');
+  if (String(newPassword || '').length < 8) throw fail('EINVAL', 'The new password must be at least 8 characters.');
+  const salt = new Uint8Array(16); crypto.getRandomValues(salt);
+  user.salt = saltText(salt); user.hash = await digest(String(newPassword), salt); save(list); return publicUser(user);
+}
+export function renameAccount(id, displayName) {
+  displayName = String(displayName || '').trim().slice(0, 40); if (!displayName) throw fail('EINVAL', 'The name cannot be empty.');
+  const list = users(), user = list.find(u => u.id === id); if (!user) throw fail('ENOENT', 'No such account.');
+  user.displayName = displayName; save(list); return publicUser(user);
+}
+export function removeAccount(id) {
+  const list = users(), user = list.find(u => u.id === id); if (!user) throw fail('ENOENT', 'No such account.');
+  if (user.role === 'admin') throw fail('EPERM', 'Administrator accounts cannot be removed.');
+  save(list.filter(u => u.id !== id));
+  for (const k of Object.keys(localStorage)) if (k.startsWith('neoos.') && (k.endsWith('.' + id) || k.includes('.' + id + '.'))) localStorage.removeItem(k); // per-user settings and app data
+  return true;
 }
 
 const hue = s => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);

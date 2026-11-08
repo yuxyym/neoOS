@@ -7,14 +7,17 @@ export function normalize(path) {
   if (parts.some(p => p === '.' || p === '..' || p.includes('\0'))) throw Object.assign(new Error('Invalid path'), { code: 'EINVAL' });
   return '/' + parts.join('/');
 }
-const TEXT = 'txt log ini cfg conf env sh bash zsh bat ps1 py rb go rs java kt c h cpp hpp cs ts tsx jsx vue lua php sql yml yaml toml xml rst tex gitignore'.split(' ');
+const TEXT = 'txt log ini cfg conf env sh bash zsh fish bat ps1 py rb go rs java kt c h cpp hpp cc cs ts tsx jsx vue svelte lua php sql yml yaml toml xml rst tex gitignore gitattributes editorconfig properties gradle swift dart r pl diff patch lock'.split(' ');
 const MIME = {
-  md: 'text/markdown', csv: 'text/csv', json: 'application/json', html: 'text/html', htm: 'text/html', css: 'text/css', js: 'text/javascript', mjs: 'text/javascript',
+  md: 'text/markdown', markdown: 'text/markdown', csv: 'text/csv', json: 'application/json', jsonc: 'application/json', html: 'text/html', htm: 'text/html', css: 'text/css', js: 'text/javascript', mjs: 'text/javascript', cjs: 'text/javascript',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword', odt: 'application/vnd.oasis.opendocument.text', rtf: 'application/rtf',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', ods: 'application/vnd.oasis.opendocument.spreadsheet', tsv: 'text/tab-separated-values',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ppt: 'application/vnd.ms-powerpoint', odp: 'application/vnd.oasis.opendocument.presentation',
   svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp', ico: 'image/x-icon',
-  pdf: 'application/pdf', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', mp4: 'video/mp4', zip: 'application/zip',
+  pdf: 'application/pdf',
+  mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac', m4a: 'audio/mp4', aac: 'audio/aac',
+  mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', mkv: 'video/x-matroska', mov: 'video/quicktime', ogv: 'video/ogg',
+  zip: 'application/zip', gz: 'application/gzip', tgz: 'application/gzip', tar: 'application/x-tar', '7z': 'application/x-7z-compressed',
 };
 export const mimeByExtension = name => { const ext = String(name).toLowerCase().split('.').at(-1); return MIME[ext] || (TEXT.includes(ext) ? 'text/plain' : 'application/octet-stream'); };
 const isText = m => m.startsWith('text/') || m === 'application/json' || m === 'image/svg+xml';

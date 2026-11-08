@@ -1,9 +1,12 @@
 // Notification toasts plus the `notify.show` syscall. Registered at shell start so it can extend the kernel's syscall table.
+// Do Not Disturb (localStorage "neoos.dnd" = "1") hides toasts unless they are alarms or explicitly forced.
 import { syscalls, log } from './kernel.js';
 import { playSound } from './sound.js';
 
 const MAX_TOASTS = 4;
-export function toast({ title = '', message = '', icon = 'branding/neoiconwhite.png', sound = 'message-new-instant', timeout = 6000 } = {}) {
+const dnd = () => { try { return localStorage.getItem('neoos.dnd') === '1'; } catch { return false; } };
+export function toast({ title = '', message = '', icon = 'branding/neoiconwhite.png', sound = 'message-new-instant', timeout = 6000, force = false } = {}) {
+  if (dnd() && !force && sound !== 'alarm-clock-elapsed') return;
   const host = document.getElementById('toasts'); if (!host) return;
   while (host.children.length >= MAX_TOASTS) host.firstElementChild.remove();
   const el = document.createElement('div'); el.className = 'neo-toast'; el.setAttribute('role', 'status');
@@ -17,7 +20,7 @@ export function toast({ title = '', message = '', icon = 'branding/neoiconwhite.
 export function initNotifications() {
   syscalls['notify.show'] = { fn: (p, o = {}) => {
     const sound = o.sound === false ? null : o.sound === 'alarm' ? 'alarm-clock-elapsed' : 'message-new-instant';
-    toast({ title: String(o.title || p.manifest.name).slice(0, 80), message: String(o.message || '').slice(0, 300), icon: p.base + p.manifest.icon, sound });
+    toast({ title: String(o.title || p.manifest.name).slice(0, 80), message: String(o.message || '').slice(0, 300), icon: p.base + p.manifest.icon, sound, force: !!o.force });
     log('info', p.appId, 'notification shown'); return true;
   } };
 }

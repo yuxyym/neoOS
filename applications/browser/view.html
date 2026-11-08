@@ -1,23 +1,39 @@
 <style>
-body{height:100vh;overflow:hidden}
-.bar{display:flex;align-items:center;gap:6px;height:44px;padding:0 8px;background:var(--neo-surface-0);border-bottom:1px solid var(--neo-border)}
-.bar input{flex:1}.msg{display:grid;place-items:center;height:calc(100vh - 44px)}
+body{height:100vh;overflow:hidden;display:flex;flex-direction:column;background:var(--neo-surface-3)}
+.tabs{display:flex;align-items:flex-end;gap:2px;height:34px;flex:none;padding:4px 6px 0;background:var(--neo-surface-3);overflow:hidden}
+.tab{display:flex;align-items:center;gap:6px;flex:0 1 190px;min-width:64px;height:30px;padding:0 4px 0 10px;background:var(--neo-surface-2);color:var(--neo-text-muted);border:1px solid var(--neo-hairline);border-bottom:0}
+.tab.on{background:var(--neo-surface-0);color:var(--neo-text)}
+.tab .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab .x{width:20px;height:20px;padding:0;border:0;background:none;color:inherit;font-size:15px;line-height:1}.tab .x:hover{background:var(--neo-hover)}
+.plus{flex:none;align-self:center;width:28px;height:26px;padding:0;border:0;background:none;color:var(--neo-text);font-size:18px}.plus:hover{background:var(--neo-hover)}
+.bar{display:flex;align-items:center;gap:6px;height:42px;flex:none;padding:0 8px;background:var(--neo-surface-0);border-bottom:1px solid var(--neo-border)}
+.bar input{flex:1}
+.msg{flex:1;display:grid;place-items:center;background:var(--neo-surface-1)}
 </style>
+<div class="tabs" id="strip"></div>
 <form class="bar" id="f">
   <button type="button" id="back" class="neo-btn neo-btn--ghost neo-btn--icon" title="Back" aria-label="Back" disabled>&#8249;</button>
   <button type="button" id="fwd" class="neo-btn neo-btn--ghost neo-btn--icon" title="Forward" aria-label="Forward" disabled>&#8250;</button>
   <button type="button" id="reload" class="neo-btn neo-btn--ghost neo-btn--icon" title="Reload" aria-label="Reload">&#10227;</button>
   <input id="url" class="neo-input" placeholder="Search or enter address" aria-label="Address" autocomplete="off" spellcheck="false">
 </form>
-<div class="msg u-muted">Loading&hellip;</div>
+<div class="msg u-muted" id="msg">Loading&hellip;</div>
 <script>
-const $=id=>document.getElementById(id),send=m=>neoWindow.postMessage(m);let loading=false;
+const $=id=>document.getElementById(id),send=m=>neoWindow.postMessage(m);let loading=false,tabs=[],active=null;
+const plus=document.createElement('button');plus.type='button';plus.className='plus';plus.textContent='+';plus.title='New tab (Ctrl+T)';plus.setAttribute('aria-label','New tab');plus.onclick=()=>send({newTab:true});
+function render(){$('strip').replaceChildren(...tabs.map(t=>{const d=document.createElement('div');d.className='tab'+(t.id===active?' on':'');d.title=t.title||t.url||'';
+ const s=document.createElement('span');s.className='t';s.textContent=(t.loading?'… ':'')+(t.title||t.url||'New tab');
+ const x=document.createElement('button');x.type='button';x.className='x';x.textContent='×';x.setAttribute('aria-label','Close tab');x.onclick=e=>{e.stopPropagation();send({close:t.id})};
+ d.onclick=()=>send({switch:t.id});d.append(s,x);return d}),plus)}
 $('back').onclick=()=>send({action:'back'});$('fwd').onclick=()=>send({action:'forward'});
 $('reload').onclick=()=>send({action:loading?'stop':'reload'});
 $('f').onsubmit=e=>{e.preventDefault();send({go:$('url').value})};
 $('url').onfocus=()=>$('url').select();
-addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='l'){e.preventDefault();$('url').focus()}});
-neoWindow.onMessage(s=>{loading=!!s.loading;$('back').disabled=!s.canBack;$('fwd').disabled=!s.canForward;
- $('reload').innerHTML=loading?'&#10005;':'&#10227;';$('reload').title=loading?'Stop':'Reload';
- if(document.activeElement!==$('url')&&s.url)$('url').value=s.url});
+addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase();
+ if(k==='l'){e.preventDefault();$('url').focus()}else if(k==='t'){e.preventDefault();send({newTab:true})}else if(k==='w'&&active!=null){e.preventDefault();send({close:active})}});
+neoWindow.onMessage(m=>{if(!m.tabs)return;tabs=m.tabs;active=m.active;const a=tabs.find(t=>t.id===active)||{};loading=!!a.loading;
+ $('back').disabled=!a.canBack;$('fwd').disabled=!a.canForward;$('reload').innerHTML=loading?'&#10005;':'&#10227;';$('reload').title=loading?'Stop':'Reload';
+ const has=!!(a.url&&a.url!=='about:blank');if(document.activeElement!==$('url'))$('url').value=has?a.url:'';
+ $('msg').textContent=loading?'Loading…':'Ready to browse';render()});
+render();
 </script>

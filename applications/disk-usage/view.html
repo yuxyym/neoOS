@@ -1,0 +1,20 @@
+<style>body{height:100vh;display:flex;flex-direction:column;overflow:hidden}.top{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--neo-border)}.top span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list{flex:1;overflow:auto;padding:6px 10px}.r{position:relative;display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;height:30px;padding:0 8px;border-bottom:1px solid var(--neo-hairline)}.r i{position:absolute;left:0;top:2px;bottom:2px;background:color-mix(in srgb,var(--neo-accent) 30%,transparent);z-index:0}.r>*{position:relative;z-index:1}
+.r.d{cursor:pointer}.r.d:hover{background:var(--neo-hover)}.r b{font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.r em{font-style:normal;text-align:end;color:var(--neo-text-muted)}</style>
+<div class="top"><button id="up" class="neo-btn neo-btn--sm" disabled>&uarr; Up</button><span id="p" class="u-muted"></span><button id="re" class="neo-btn neo-btn--sm">Rescan</button><button id="fm" class="neo-btn neo-btn--sm">Show in Files</button></div>
+<div class="list" id="l"><div class="u-muted" style="padding:20px">Scanning…</div></div>
+<footer class="neo-statusbar"><span id="s"></span><span id="e"></span></footer>
+<script>
+const $=id=>document.getElementById(id),send=m=>neoWindow.postMessage(m);let cur=null,parent=null;
+const fmt=n=>{const u=['B','KB','MB','GB','TB'];let i=0;while(n>=1024&&i<4){n/=1024;i++}return n.toFixed(i?1:0)+' '+u[i]};
+$('up').onclick=()=>parent&&send({scan:parent});$('re').onclick=()=>cur&&send({scan:cur});$('fm').onclick=()=>cur&&send({reveal:cur});
+neoWindow.onMessage(m=>{
+ if(m.scanning){$('p').textContent=m.scanning;$('l').replaceChildren(Object.assign(document.createElement('div'),{className:'u-muted',textContent:'Scanning…',style:'padding:20px'}));$('e').textContent='';return}
+ if(m.error){$('e').textContent=m.error;$('l').replaceChildren();return}
+ const r=m.result;if(!r)return;cur=r.path;parent=r.parent;$('up').disabled=!parent;$('p').textContent=r.path;
+ const max=Math.max(1,...r.entries.map(e=>e.size));
+ $('l').replaceChildren(...r.entries.map(e=>{const d=document.createElement('div');d.className='r'+(e.dir?' d':'');const bar=document.createElement('i');bar.style.width=(e.size/max*100)+'%';
+  const n=document.createElement('b');n.textContent=(e.dir?'📁 ':'')+e.name;const z=document.createElement('em');z.textContent=fmt(e.size);d.append(bar,n,z);if(e.dir)d.onclick=()=>send({scan:e.path});return d}));
+ $('s').textContent=`${fmt(r.total)} in ${r.count} item${r.count===1?'':'s'}`;$('e').textContent=r.partial?'Partial result (scan limit reached)':'';
+});
+</script>

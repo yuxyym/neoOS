@@ -1,12 +1,14 @@
 {
   "name": "neoos",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "neoOS desktop environment as a full-screen Electron application with real file system, shell and system information",
-  "main": "electron/main.js",
+  "main": "electron/boot.js",
   "license": "GPL-3.0-or-later",
   "scripts": {
     "start": "electron .",
     "start:nosandbox": "electron . --no-sandbox",
+    "session": "electron . --session",
+    "install-session": "node tools/install-session.mjs",
     "lint": "node tools/lint-bootstrap.mjs",
     "postinstall": "node tools/setup-pty.mjs",
     "dist": "electron-builder"
@@ -15,16 +17,43 @@
     "electron": "^45.1.0",
     "electron-builder": "^26.0.0"
   },
-  "optionalDependencies": {
-    "@homebridge/node-pty-prebuilt-multiarch": "^0.14.1"
-  },
   "build": {
     "appId": "org.neoos.desktop",
     "productName": "neoOS",
-    "files": ["electron/**", "os/**", "sdk/**", "neoui/**", "applications/**", "branding/**", "resources/**", "index.html", "404.html", "package.json"],
-    "asarUnpack": ["**/*.node", "**/spawn-helper", "**/winpty-agent.exe"],
-    "linux": { "target": ["AppImage", "deb"], "category": "System" },
-    "win": { "target": ["nsis"] },
-    "mac": { "category": "public.app-category.utilities" }
+    "files": [
+      "electron/**",
+      "os/**",
+      "sdk/**",
+      "neoui/**",
+      "applications/**",
+      "branding/**",
+      "resources/**",
+      "index.html",
+      "404.html",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "**/spawn-helper",
+      "**/winpty-agent.exe"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "System"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "category": "public.app-category.utilities"
+    }
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0"
   }
 }

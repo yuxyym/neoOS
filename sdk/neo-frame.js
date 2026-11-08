@@ -11,4 +11,8 @@
   // Native OS feel: no browser context menu or image dragging, except inside text fields.
   addEventListener('contextmenu', e => { if (!(e.target.closest && e.target.closest('input,textarea,[contenteditable],.u-select'))) e.preventDefault(); });
   addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
+  // Tell the desktop the user is active (used for auto-lock). Throttled; carries no data.
+  let last = 0;
+  const ping = () => { const t = Date.now(); if (t - last > 4000) { last = t; try { parent.postMessage({ neoActivity: 1 }, '*'); } catch {} } };
+  ['pointerdown', 'keydown', 'wheel'].forEach(ev => addEventListener(ev, ping, true));
 })();

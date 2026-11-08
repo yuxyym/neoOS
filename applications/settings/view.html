@@ -1,50 +1,169 @@
 <style>
-body{height:100vh;display:flex;overflow:hidden}
-.neo-sidebar{width:196px}.brand{padding:4px 10px 12px;font-weight:700;font-size:1.05rem}
-.page{flex:1;min-width:0;overflow:auto;padding:22px 26px}.page h1{font-size:1.45rem;margin:0 0 4px}.page>p{color:var(--neo-text-muted);margin:0 0 18px}
-.panel{margin:0 0 14px}.panel h2{font-size:1rem;margin:0 0 10px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.wallpapers{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:12px 0}
-.wp{height:78px;padding:0;border:2px solid transparent;border-radius:10px;background:var(--neo-surface-3) center/cover;color:#fff;font-size:.85rem;font-weight:600;text-shadow:0 1px 4px #000,0 1px 8px #000;display:flex;align-items:flex-end;justify-content:flex-start;overflow:hidden}
-.wp span{padding:6px 8px}.wp.is-active{border-color:var(--neo-accent);box-shadow:var(--neo-focus-ring)}
-.account{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--neo-hairline)}.account:last-child{border:0}
-.form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form button{grid-column:1/-1}
-.bar{height:8px;border-radius:4px;background:var(--neo-surface-0);overflow:hidden;margin:10px 0}.bar i{display:block;height:100%;background:var(--neo-accent)}
-[hidden]{display:none!important}
+body{height:100vh;display:flex;overflow:hidden;background:var(--neo-surface-0)}
+.side{width:240px;flex:none;display:flex;flex-direction:column;gap:2px;padding:12px 10px;background:var(--neo-surface-2);border-inline-end:1px solid var(--neo-border);overflow:auto}
+.me{display:flex;align-items:center;gap:10px;padding:6px 6px 12px}.me b{display:block}
+.nav{display:flex;align-items:center;gap:10px;height:34px;padding:0 8px;border:0;background:none;text-align:start;width:100%}
+.nav:hover{background:var(--neo-hover)}.nav.on{background:var(--neo-accent);color:#fff}
+.grplabel{margin:12px 0 2px 8px;font-size:.72rem;font-weight:600;text-transform:uppercase;color:var(--neo-text-muted)}
+.ic{width:24px;height:24px;display:grid;place-items:center;color:#fff;font-size:13px;flex:none}
+.main{flex:1;min-width:0;overflow:auto;padding:22px 32px 40px}.main h1{margin:0 0 14px;font-size:1.6rem;font-weight:600}
+.grp{margin:0 0 20px}.grp>h3{margin:0 0 6px 2px;font-size:.78rem;color:var(--neo-text-muted);font-weight:600;text-transform:uppercase}
+.card{background:var(--neo-surface-1);border:1px solid var(--neo-border)}
+.row{display:flex;align-items:center;gap:14px;min-height:46px;padding:8px 14px;border-bottom:1px solid var(--neo-hairline)}.row:last-child{border:0}
+.row .l{flex:1;min-width:0;overflow-wrap:anywhere}.row small{display:block;color:var(--neo-text-muted)}
+.row form{display:flex;flex-wrap:wrap;gap:8px;width:100%}.row form input{flex:1;min-width:120px}
+.acts{display:flex;gap:6px;align-items:center}
+.badge{padding:1px 8px;background:var(--neo-success);color:#fff;font-size:.78rem}
+.sw{width:42px;height:24px;border:0;background:#8a8a8a;position:relative;padding:0;flex:none}.sw i{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;transition:left .12s}.sw.on{background:var(--neo-accent)}.sw.on i{left:21px}
+.sl{display:flex;align-items:center;gap:10px}.sl input{width:200px;accent-color:var(--neo-accent)}.sl span{min-width:46px;text-align:end;color:var(--neo-text-muted)}
+.muted{color:var(--neo-text-muted)}.note{padding:14px;color:var(--neo-text-muted)}
+.wps{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:14px}
+.wp{height:78px;padding:0;border:2px solid transparent;background:var(--neo-surface-3) center/cover;color:#fff;font-weight:600;text-shadow:0 1px 4px #000;display:flex;align-items:flex-end;text-align:start}.wp span{padding:6px 8px}.wp.on{border-color:var(--neo-accent)}
+.bar{height:8px;background:var(--neo-surface-0);margin:8px 0}.bar i{display:block;height:100%;background:var(--neo-accent)}
+#banner{position:sticky;top:0;margin:0 0 12px;padding:10px 14px;background:var(--neo-danger);color:#fff;z-index:2}#banner.ok{background:var(--neo-success)}
+select.neo-input{width:auto;min-width:170px}
 </style>
-<aside class="neo-sidebar"><div class="brand">Settings</div><nav id="nav" style="display:flex;flex-direction:column;gap:2px" aria-label="Settings categories"></nav></aside>
-<main class="page"><h1 id="heading"></h1><p id="description"></p>
-<section id="appearance" class="page-section">
-  <article class="neo-card panel"><h2>Wallpaper</h2><p class="u-muted" style="margin:0">Pick a built-in background or any image in your neoOS files. Use Storage to import pictures from this device.</p><div id="wallpapers" class="wallpapers"></div><div class="row"><button id="browse" class="neo-btn">Choose an image…</button><button id="reload" class="neo-btn neo-btn--ghost">Refresh</button></div></article>
-</section>
-<section id="accounts-section" class="page-section" hidden>
-  <article class="neo-card panel"><h2>Local accounts</h2><p class="u-muted" style="margin:0 0 6px">Accounts and password verifiers are stored in this browser profile.</p><div id="account-list"></div><p id="account-error" role="status" class="u-muted"></p></article>
-  <article class="neo-card panel" id="add-account"><h2>Add account</h2><form id="account-form" class="form"><input id="display-name" class="neo-input" placeholder="Display name" required><input id="username" class="neo-input" placeholder="Username" autocomplete="username" required><input id="password" class="neo-input" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required><span></span><button class="neo-btn neo-btn--primary">Create account</button></form></article>
-  <button id="lock" class="neo-btn">Lock or switch account…</button>
-</section>
-<section id="storage-section" class="page-section" hidden><article class="neo-card panel"><h2>Disk storage</h2><p id="storage" style="margin:0"></p><div class="bar"><i id="usage" style="width:0"></i></div><p class="u-muted">Imported files are copied into your Downloads folder on this computer.</p><div class="row"><button id="import" class="neo-btn neo-btn--primary">Import files…</button><span id="import-status" role="status" class="u-muted"></span></div><input id="file-input" type="file" multiple hidden></article></section>
-<section id="about-section" class="page-section" hidden><article class="neo-card panel"><h2 id="about-title"></h2><p id="about-api"></p><p id="about-user" style="margin-bottom:0"></p></article></section>
-</main>
+<aside class="side"><div class="me" id="me"></div><input id="q" class="neo-input" type="search" placeholder="Search" aria-label="Search settings" style="margin-bottom:8px"><div id="nav"></div></aside>
+<main class="main"><div id="banner" hidden role="alert"></div><h1 id="title"></h1><div id="body"></div></main>
+<input id="file" type="file" multiple hidden>
 <script>
-const $=id=>document.getElementById(id),post=m=>neoWindow.postMessage(m);
-const PAGES=[['appearance','Appearance','Customize how your desktop looks.'],['accounts-section','Accounts','Manage local users and sign-in.'],['storage-section','Storage','Review local storage and import files.'],['about-section','About','System information for this neoOS instance.']];
-let current='appearance',state=null;
-function show(id){current=id;const p=PAGES.find(x=>x[0]===id);$('heading').textContent=p[1];$('description').textContent=p[2];document.querySelectorAll('.page-section').forEach(s=>s.hidden=s.id!==id);document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('is-active',b.dataset.id===id))}
-$('nav').replaceChildren(...PAGES.map(([id,l])=>{const b=document.createElement('button');b.className='neo-sidebar__item';b.dataset.id=id;b.textContent=l;b.onclick=()=>show(id);return b}));
-$('browse').onclick=()=>post({openWallpaper:true});$('reload').onclick=()=>post({refresh:true});$('lock').onclick=()=>post({lock:true});
-$('account-form').onsubmit=e=>{e.preventDefault();post({createAccount:{displayName:$('display-name').value,username:$('username').value,password:$('password').value}});e.target.reset()};
-const fmt=n=>{if(!Number.isFinite(n))return 'Unavailable';const u=['B','KB','MB','GB'];let i=0;while(n>=1024&&i<3){n/=1024;i++}return `${n.toFixed(i?1:0)} ${u[i]}`};
-$('import').onclick=()=>$('file-input').click();
-$('file-input').onchange=async e=>{const files=[...e.target.files];let n=0;for(const f of files){if(f.size>50*1048576){$('import-status').textContent=`Skipped ${f.name}: larger than 50 MB.`;continue}post({importFile:{name:f.name,type:f.type,bytes:new Uint8Array(await f.arrayBuffer())}});n++}e.target.value='';if(n)$('import-status').textContent=`Importing ${n} file${n===1?'':'s'}…`};
-const hue=s=>[...s].reduce((h,c)=>(h*31+c.charCodeAt(0))%360,7);
+const $=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const post=m=>neoWindow.postMessage(m),pend=new Map();let rid=0,S={prefs:{},assoc:{},apps:[],accounts:[],ui:{uiScale:100,autoLock:0,dnd:false},startup:{},procs:[],net:{interfaces:[]}},cur='wifi',tok=0,bt;
+const sys=(action,args={})=>new Promise((ok,no)=>{const r=++rid;pend.set(r,{ok,no});post({sys:{rid:r,action,args}})});
+const say=(e,bad=true)=>{const b=document.getElementById('banner');b.textContent=String(e&&e.message||e);b.className=bad?'':'ok';b.hidden=false;clearTimeout(bt);bt=setTimeout(()=>b.hidden=true,6000)};
+const fail=e=>say(e,true);
+const setPref=(k,v)=>{S.prefs[k]=v;post({prefs:{[k]:v}})};
+const setUi=(k,v)=>{S.ui[k]=v;post({ui:{[k]:v}})};
+const PANES=[
+['wifi','Wi‑Fi','📶','#0a84ff','network internet wireless','Connectivity'],
+['bluetooth','Bluetooth','✱','#0a84ff','devices pair','Connectivity'],
+['network','Network','🌐','#0a84ff','ip address hostname mac ethernet','Connectivity'],
+['appearance','Wallpaper','🖼','#30b0c7','background desktop picture','Personalization'],
+['dock','Desktop & Dock','▭','#636366','icons autohide size','Personalization'],
+['notifications','Notifications','🔔','#ff453a','do not disturb alerts toast','Personalization'],
+['startup','Startup Apps','⏻','#ff9f0a','autostart login background services','Personalization'],
+['sound','Sound','🔊','#ff375f','volume audio speaker mute','Hardware'],
+['display','Display','🖥','#5e5ce6','brightness night light screen scale zoom','Hardware'],
+['keyboard','Keyboard','⌨','#8e8e93','layout shortcuts typing','Hardware'],
+['power','Battery & Power','🔋','#30d158','sleep shutdown restart lock idle','Hardware'],
+['apps','Default Apps','▤','#ff9f0a','file associations open with pdf text','System'],
+['installed','Installed Apps','▦','#32ade6','applications permissions running quit','System'],
+['time','Date & Time','🕒','#ff453a','clock timezone 24 hour language region','System'],
+['access','Accessibility','♿','#0a84ff','motion scale large text','System'],
+['users','Users & Accounts','👤','#32ade6','password login rename','System'],
+['storage','Storage','▥','#8e8e93','disk import','System'],
+['about','About','ⓘ','#8e8e93','system info version','System']];
+const KEYS=[['Alt+Space','App launcher'],['Ctrl+Alt+T','Terminal'],['Ctrl+Alt+E','Files'],['Ctrl+Alt+B','Browser'],['Ctrl+Alt+D','Show desktop'],['Ctrl+Alt+← / →','Switch windows'],['Ctrl+Shift+Esc','Task Manager'],['Ctrl+Alt+L','Lock screen'],['Volume keys','System volume']];
+/* building blocks */
+function row(l,c,sub){const r=$('div','row'),t=$('div','l',l);if(sub){t.append($('small','',sub))}r.append(t);if(c)r.append(c);return r}
+function grp(title,...rows){const g=$('div','grp');if(title)g.append($('h3','',title));const c=$('div','card');c.append(...rows.filter(Boolean));g.append(c);return g}
+const note=t=>{const g=$('div','grp'),c=$('div','card');c.append($('div','note',t));g.append(c);return g};
+function toggle(on,fn){const b=$('button','sw'+(on?' on':''));b.type='button';b.append($('i'));b.setAttribute('role','switch');b.setAttribute('aria-checked',!!on);
+ b.onclick=async()=>{const v=!b.classList.contains('on');b.classList.toggle('on',v);b.setAttribute('aria-checked',v);try{await fn(v)}catch(e){b.classList.toggle('on',!v);fail(e)}};return b}
+function slider(v,min,max,fn,fmt=x=>x+'%',step=1){const d=$('div','sl'),i=$('input');i.type='range';i.min=min;i.max=max;i.step=step;i.value=v;const s=$('span','',fmt(v));i.oninput=()=>s.textContent=fmt(+i.value);i.onchange=async()=>{try{await fn(+i.value)}catch(e){fail(e)}};d.append(i,s);return d}
+function select(opts,val,fn){const s=$('select','neo-input');for(const [v,l] of opts){const o=$('option','',l);o.value=v;s.append(o)}s.value=val;s.onchange=async()=>{try{await fn(s.value)}catch(e){fail(e)}};return s}
+function btn(l,fn,cls=''){const b=$('button','neo-btn '+cls,l);b.type='button';b.onclick=async()=>{b.disabled=true;try{await fn()}catch(e){fail(e)}b.disabled=false};return b}
+function confirmBtn(l,fn,cls=''){let t;const b=$('button','neo-btn '+cls,l);b.type='button';b.onclick=()=>{if(b.dataset.armed){clearTimeout(t);fn();return}b.dataset.armed='1';b.textContent='Confirm?';t=setTimeout(()=>{delete b.dataset.armed;b.textContent=l},3000)};return b}
+const lazy=(title,fill)=>{const g=$('div','grp'),c=$('div','card');if(title)g.append($('h3','',title));g.append(c);c.append(row('Loading…'));fill(c).catch(e=>c.replaceChildren(row('Unavailable',null,e.message)));return g};
+const fmtB=n=>{if(!isFinite(n))return'–';const u=['B','KB','MB','GB','TB'];let k=0;while(n>=1024&&k<4){n/=1024;k++}return n.toFixed(k?1:0)+' '+u[k]};
+/* panes */
+const R={
+async wifi(){const st=await sys('wifi.status');if(!st.supported)return[note('Wi‑Fi control is not available on this computer.')];
+ const out=[grp('',row('Wi‑Fi',st.canPower===false?$('span','muted','Always on'):toggle(st.enabled,async on=>{await sys('wifi.power',{on});setTimeout(show,1500)}),st.ssid?'Connected to '+st.ssid:'Not connected'))];
+ if(st.enabled)out.push(lazy('Networks',async c=>{const l=await sys('wifi.scan');c.replaceChildren();if(!l.length)c.append(row('No networks found'));for(const n of l)c.append(netRow(n))}),btn('Rescan',show));return out},
+async bluetooth(){const st=await sys('bt.status');if(!st.supported)return[note(st.hint||'Bluetooth control is not available on this computer.')];
+ const out=[grp('',row('Bluetooth',st.canPower===false?$('span','muted','Always on'):toggle(st.enabled,async on=>{await sys('bt.power',{on});setTimeout(show,1500)})))];
+ if(st.enabled)out.push(lazy('Devices',async c=>{const l=await sys('bt.devices');c.replaceChildren();if(!l.length)c.append(row('No devices'));for(const d of l)c.append(devRow(d))}),btn('Scan for devices',async()=>{say('Scanning…',false);await sys('bt.scan');show()}));return out},
+async network(){const n=S.net||{interfaces:[]},out=[grp('Computer',row('Computer name',$('span','muted u-select',n.hostname||'–')))];
+ const by={};for(const i of n.interfaces.filter(i=>!i.internal))(by[i.name]??=[]).push(i);
+ const names=Object.keys(by);if(!names.length)out.push(note('No active network connections.'));
+ for(const k of names)out.push(grp(k,...by[k].map(i=>row(i.family+' address',$('span','muted u-select',i.address),i.family==='IPv4'?'MAC '+i.mac:null))));
+ out.push(btn('Refresh',()=>post({refresh:true})));return out},
+async sound(){let v={volume:S.prefs.volume,muted:false},ok=true;try{v=await sys('volume.get')}catch{ok=false}
+ return[grp('Output',row('Output volume',slider(v.volume,0,100,async x=>{await sys('volume.set',{volume:x});post({prefs:{volume:x}})}),ok?'Controls the computer\'s system volume':'System volume control unavailable'),row('Mute',toggle(v.muted,on=>sys('volume.mute',{muted:on})))),
+ grp('Effects',row('Play system sounds',toggle(S.prefs.sounds,on=>setPref('sounds',on))),row('Play a test sound',btn('Test',()=>post({notifyTest:true}))))]},
+async display(){let b=null;try{const r=await sys('brightness.get');if(r.supported)b=r.brightness}catch{}
+ return[grp('Brightness',b!=null?row('Brightness',slider(b,5,100,x=>sys('brightness.set',{brightness:x}))):row('Brightness',slider(S.prefs.brightness,40,100,x=>setPref('brightness',x)),'Software dimming (hardware control unavailable)'),row('Night light',slider(S.prefs.nightLight,0,100,x=>setPref('nightLight',x)),'Warmer colours for the evening')),
+ grp('Scale',row('Interface scale',slider(S.ui.uiScale,75,200,x=>setUi('uiScale',x),x=>x+'%',5),'Makes everything larger or smaller')),
+ grp('Screen',row('Resolution',$('span','muted',`${screen.width} × ${screen.height}`)))]},
+async keyboard(){let k={supported:false};try{k=await sys('kb.get')}catch{}let rep={delay:500,rate:25};
+ const out=[grp('Keyboard',k.supported?row('Input layout',select(k.layouts.map(x=>[x,x.toUpperCase()]),k.layout,async v=>{await sys('kb.set',{layout:v})})):row('Input layout',$('span','muted',k.layout||'System managed')))];
+ if(k.canRepeat)out.push(grp('Typing',row('Key repeat delay',slider(500,150,1200,x=>{rep.delay=x;return sys('kb.repeat',rep)},x=>x+' ms')),row('Key repeat rate',slider(25,5,60,x=>{rep.rate=x;return sys('kb.repeat',rep)},x=>x+'/s'))));
+ else out.push(grp('',row('System keyboard settings',btn('Open…',()=>sys('native.open',{panel:'keyboard'})))));
+ out.push(grp('Shortcuts',...KEYS.map(([a,b])=>row(b,$('code','',a)))));return out},
+async appearance(){const g=$('div','grp'),c=$('div','card'),w=$('div','wps');
+ for(const x of S.wallpapers||[]){const b=$('button','wp'+(S.wallpaper===x.id?' on':''));if(x.preview)b.style.backgroundImage=`linear-gradient(#0000,#0009),url("${x.preview}")`;b.append($('span','',x.label));b.onclick=()=>post({wallpaper:x.id});w.append(b)}
+ c.append(w,row('Custom image',btn('Choose…',()=>post({openWallpaper:true}))));g.append($('h3','','Wallpaper'),c);return[g]},
+async dock(){const p=S.prefs;return[grp('Dock',row('Size',select([['small','Small'],['medium','Medium'],['large','Large']],p.dockSize,v=>setPref('dockSize',v))),row('Hide automatically',toggle(p.dockAutoHide,on=>setPref('dockAutoHide',on)))),grp('Desktop',row('Show desktop icons',toggle(p.desktopIcons,on=>setPref('desktopIcons',on))))]},
+async notifications(){return[grp('Alerts',row('Do not disturb',toggle(S.ui.dnd,on=>setUi('dnd',on)),'Hide notification pop-ups (alarms still show)'),row('System sounds',toggle(S.prefs.sounds,on=>setPref('sounds',on)))),grp('',row('Send a test notification',btn('Send',()=>post({notifyTest:true}))))]},
+async startup(){const apps=[...S.apps].sort((a,b)=>a.name.localeCompare(b.name));
+ return[note('Apps switched on here start automatically when you sign in. Apps without a window run in the background.'),grp('Run at sign-in',...apps.map(a=>row(a.name,toggle(S.startup[a.id],on=>{S.startup[a.id]=on;post({startup:{id:a.id,on}})}),a.id)))]},
+async apps(){const EX={
+ 'Documents':{docx:['Word document','application/vnd.openxmlformats-officedocument.wordprocessingml.document'],xlsx:['Excel spreadsheet','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],pptx:['PowerPoint','application/vnd.openxmlformats-officedocument.presentationml.presentation'],pdf:['PDF','application/pdf']},
+ 'Text and code':{txt:['Text document','text/plain'],md:['Markdown','text/markdown'],json:['JSON','application/json'],html:['Web page','text/html'],css:['Stylesheet','text/css'],js:['JavaScript','text/javascript'],csv:['CSV table','text/csv'],log:['Log file','text/plain'],sh:['Shell script','text/plain'],py:['Python script','text/plain']},
+ 'Images':{png:['PNG image','image/png'],jpg:['JPEG image','image/jpeg'],gif:['GIF image','image/gif'],svg:['SVG image','image/svg+xml'],webp:['WebP image','image/webp'],bmp:['Bitmap image','image/bmp']},
+ 'Audio and video':{mp3:['MP3 audio','audio/mpeg'],wav:['WAV audio','audio/wav'],ogg:['Ogg audio','audio/ogg'],flac:['FLAC audio','audio/flac'],m4a:['M4A audio','audio/mp4'],mp4:['MP4 video','video/mp4'],webm:['WebM video','video/webm'],mkv:['Matroska video','video/x-matroska'],mov:['QuickTime video','video/quicktime']},
+ 'Archives':{zip:['ZIP archive','application/zip']}};
+ const can=(a,ext,mime)=>a.associations.some(t=>t===mime||t==='.'+ext||(t.endsWith('/*')&&mime.startsWith(t.slice(0,-1))));
+ const out=[note('Choose which app opens each kind of file. This applies everywhere in neoOS, including Files and Search.')];
+ for(const [cat,items] of Object.entries(EX))out.push(grp(cat,...Object.entries(items).map(([ext,[label,mime]])=>{const opts=[['','Ask every time'],...S.apps.filter(a=>can(a,ext,mime)).map(a=>[a.id,a.name]),['@system','System default app']],cur=S.assoc[ext]||'';
+  if(cur&&!opts.some(o=>o[0]===cur))opts.push([cur,cur]);return row(label,select(opts,cur,v=>{S.assoc[ext]=v||undefined;post({assoc:{ext,appId:v||null}})}),'.'+ext)})));
+ return out},
+async installed(){const run={};for(const p of S.procs)(run[p.appId]??=[]).push(p.pid);
+ const apps=[...S.apps].sort((a,b)=>a.name.localeCompare(b.name));
+ return[grp(`${apps.length} apps (every folder in /applications)`,...apps.map(a=>{const pids=run[a.id]||[],c=$('div','acts');
+  if(pids.length){c.append($('span','badge','Running'),confirmBtn('Quit',()=>post({killPid:pids[0]}),'neo-btn--danger'))}else c.append(btn('Open',()=>post({launch:a.id})));
+  return row(a.name,c,`v${a.version} · ${a.permissions.length?a.permissions.join(', '):'no special permissions'}`)}))]},
+async time(){const p=S.prefs,tz=Intl.DateTimeFormat().resolvedOptions().timeZone;return[grp('Clock',row('24-hour time',toggle(p.clock24,on=>setPref('clock24',on))),row('Show seconds in the menu bar',toggle(p.clockSeconds,on=>setPref('clockSeconds',on)))),grp('Region',row('Time zone',$('span','muted',tz)),row('Language',$('span','muted',navigator.language)),row('Current time',$('span','muted',new Date().toLocaleString())))]},
+async access(){return[grp('Motion',row('Reduce motion',toggle(S.prefs.reduceMotion,on=>setPref('reduceMotion',on)),'Turns off window and dock animations')),
+ grp('Size',row('Interface scale',select([[100,'100%'],[125,'125%'],[150,'150%'],[175,'175%'],[200,'200%']].map(([v,l])=>[String(v),l]),String(S.ui.uiScale),v=>setUi('uiScale',+v)),'Larger text and controls everywhere'))]},
+async users(){const me=S.user,admin=me.role==='admin';if(S.accountError)return[note(S.accountError)];
+ const out=[grp('Accounts',...S.accounts.map(a=>{const c=$('div','acts'),self=a.id===me.id;
+  c.append(renameBtn(a));if(admin&&!self&&a.role!=='admin')c.append(confirmBtn('Remove',()=>post({removeAccount:a.id}),'neo-btn--danger'));
+  return row(a.displayName+(self?' (you)':''),c,`@${a.username} · ${a.role}`)}))];
+ const f=$('form','');const pw=['Current password','New password (8+)','Repeat new password'].map(p=>{const x=$('input','neo-input');x.type='password';x.placeholder=p;x.required=true;x.autocomplete='off';x.setAttribute('aria-label',p);return x});
+ f.append(...pw,$('button','neo-btn neo-btn--primary','Change'));
+ f.onsubmit=e=>{e.preventDefault();if(pw[1].value!==pw[2].value)return fail('The new passwords do not match.');post({changePassword:{oldPassword:pw[0].value,newPassword:pw[1].value}});pw.forEach(x=>x.value='')};
+ const r=$('div','row');r.append(f);const g=$('div','grp');g.append($('h3','','Change my password'));const cd=$('div','card');cd.append(r);g.append(cd);out.push(g);
+ if(admin){const f2=$('form','');const i=['Display name','Username','Password (8+)'].map((p,n)=>{const x=$('input','neo-input');x.placeholder=p;x.required=true;if(n==2)x.type='password';return x});
+  f2.append(...i,$('button','neo-btn neo-btn--primary','Add'));f2.onsubmit=e=>{e.preventDefault();post({createAccount:{displayName:i[0].value,username:i[1].value,password:i[2].value}});i.forEach(x=>x.value='')};
+  const r2=$('div','row');r2.append(f2);const g2=$('div','grp');g2.append($('h3','','Add account'));const c2=$('div','card');c2.append(r2);g2.append(c2);out.push(g2)}
+ return out},
+async storage(){const s=S.storage;
+ const bar=$('div','bar'),i=$('i');i.style.width=s?Math.max(1,Math.min(100,s.usage/s.quota*100))+'%':'0';bar.append(i);
+ const st=$('span','muted','');const inp=document.getElementById('file');inp.onchange=async e=>{let n=0;for(const x of [...e.target.files]){if(x.size>52428800){st.textContent='Skipped '+x.name+' (over 50 MB)';continue}post({importFile:{name:x.name,type:x.type,bytes:new Uint8Array(await x.arrayBuffer())}});n++}e.target.value='';if(n)st.textContent='Importing…'};window.__st=st;
+ const r=row('Disk',null,s?`${fmtB(s.usage)} used of ${fmtB(s.quota)}`:'Unavailable');r.append(bar);bar.style.width='140px';
+ return[grp('This computer',r),grp('Import',row('Copy files into Downloads',btn('Import files…',()=>inp.click()),'Files up to 50 MB'),row('Status',st))]},
+async power(){let b={present:false};try{b=await sys('battery')}catch{}
+ const opts=[[0,'Never'],[1,'1 minute'],[2,'2 minutes'],[5,'5 minutes'],[10,'10 minutes'],[15,'15 minutes'],[30,'30 minutes'],[60,'1 hour']].map(([v,l])=>[String(v),l]);
+ return[b.present?grp('Battery',row(b.percent+'%',null,b.charging?'Charging / on AC power':'On battery')):null,
+ grp('Lock screen',row('Lock after inactivity',select(opts,String(S.ui.autoLock),v=>setUi('autoLock',+v)),'Not applied while a web page, PDF or document editor is in front')),
+ grp('Session',row('Lock screen',btn('Lock',()=>post({power:'lock'}))),row('Sleep',btn('Sleep',()=>post({power:'sleep'}))),row('Restart computer',btn('Restart…',()=>post({power:'restart'}))),row('Shut down computer',btn('Shut down…',()=>post({power:'shutdown'}),'neo-btn--danger')),row('Quit neoOS',btn('Quit…',()=>post({power:'quit'}))))].filter(Boolean)},
+async about(){const h=S.hostInfo,i=S.info,r=[['neoOS',`${i.version} (API ${i.api})`],['Apps',String(S.apps.length)],['Running processes',String(S.procs.length)]];if(h)r.push(['Computer',h.hostname],['System',`${h.osType} ${h.release} (${h.arch})`],['Processor',`${h.cpu.model} × ${h.cpu.count}`],['Memory',(h.totalmem/2**30).toFixed(1)+' GB'],['User',h.username],['Shell',h.shell||'–'],['Electron',h.versions.electron],['Chromium',h.versions.chrome],['Node.js',h.versions.node]);
+ return[grp('',...r.map(([a,b])=>row(a,$('span','muted',b))))]}
+};
+function renameBtn(a){const b=$('button','neo-btn','Rename');b.type='button';b.onclick=()=>{const f=$('form'),i=$('input','neo-input');i.value=a.displayName;i.setAttribute('aria-label','Display name');const ok=$('button','neo-btn neo-btn--primary','Save');f.append(i,ok);f.style.display='flex';f.style.gap='6px';f.onsubmit=e=>{e.preventDefault();post({rename:{id:a.id,displayName:i.value}})};b.replaceWith(f);i.focus()};return b}
+function netRow(n){const r=row((n.active?'✓ ':'')+n.ssid+(n.secure?' 🔒':''),null,'Signal '+n.signal+'%'),c=$('div');c.style.cssText='display:flex;gap:6px';
+ const join=async pw=>{await sys('wifi.connect',{ssid:n.ssid,password:pw});show()};
+ c.append(btn(n.active?'Disconnect':'Connect',async()=>{if(n.active){await sys('wifi.disconnect');return setTimeout(show,800)}
+  try{await join()}catch(e){if(!n.secure)throw e;const p=$('input','neo-input');p.type='password';p.placeholder='Password';p.style.width='150px';c.replaceChildren(p,btn('Join',()=>join(p.value)));p.focus()}}));r.append(c);return r}
+function devRow(d){const r=row(d.name,null,(d.connected?'Connected':d.paired?'Paired':'Not paired')+' · '+d.id);if(!d.readonly)r.append(btn(d.connected?'Disconnect':'Connect',async()=>{await sys(d.connected?'bt.disconnect':'bt.connect',{id:d.id});show()}));return r}
+/* shell */
+function nav(){const term=document.getElementById('q').value.trim().toLowerCase(),items=[];let last='';
+ for(const p of PANES){if(term&&!(p[1]+' '+p[4]+' '+p[5]).toLowerCase().includes(term))continue;
+  if(!term&&p[5]!==last){last=p[5];items.push($('div','grplabel',p[5]))}
+  const b=$('button','nav'+(p[0]===cur?' on':''));b.dataset.pane=p[0];const i=$('span','ic',p[2]);i.style.background=p[3];b.append(i,$('span','',p[1]));b.onclick=()=>show(p[0]);items.push(b)}
+ document.getElementById('nav').replaceChildren(...items)}
+async function show(id){if(id)cur=id;const t=++tok;nav();const p=PANES.find(x=>x[0]===cur);document.getElementById('title').textContent=p[1];let nodes;try{nodes=await R[cur]()}catch(e){nodes=[note('Unable to load: '+e.message)]}if(t!==tok)return;document.getElementById('body').replaceChildren(...nodes.filter(Boolean))}
+document.getElementById('q').oninput=()=>{nav();const f=document.querySelector('.nav');if(f&&!document.querySelector('.nav.on'))f.click()};
 neoWindow.onMessage(d=>{
- if(d.imported)$('import-status').textContent=`Saved ${d.imported} to your Downloads folder.`;
- if(!d.theme)return;state=d;
- 
- $('wallpapers').replaceChildren(...d.wallpapers.map(w=>{const b=document.createElement('button');b.className='wp'+(d.wallpaper===w.id?' is-active':'');if(w.preview)b.style.backgroundImage=`linear-gradient(#0000,#0009),url("${w.preview}")`;const s=document.createElement('span');s.textContent=w.label;b.append(s);b.onclick=()=>post({wallpaper:w.id});return b}));
- $('account-error').textContent=d.accountError||'';$('add-account').hidden=!!d.accountError;
- $('account-list').replaceChildren(...d.accounts.map(a=>{const r=document.createElement('div'),av=document.createElement('span'),t=document.createElement('div');r.className='account';av.className='neo-avatar';av.textContent=a.displayName[0];av.style.background=`hsl(${hue(a.username)} 52% 46%)`;t.innerHTML='<strong></strong><div class="u-muted"></div>';t.firstChild.textContent=a.displayName;t.lastChild.textContent=`@${a.username} · ${a.role}`;r.append(av,t);return r}));
- $('storage').textContent=d.storage?`${fmt(d.storage.usage)} used of ${fmt(d.storage.quota)}`:'Storage estimate unavailable';$('usage').style.width=d.storage?Math.max(1,Math.min(100,d.storage.usage/d.storage.quota*100))+'%':'0';
- $('about-title').textContent=`${d.info.name} ${d.info.version}`;$('about-api').textContent=`Platform API ${d.info.api}`;$('about-user').textContent=`Signed in as ${d.user.displayName} (@${d.user.username}) · ${d.user.role}`;
-});
-show(current);
+ if(d.fail){fail(d.fail);return}
+ if(d.done){say(d.done,false);return}
+ if(d.sysr){const p=pend.get(d.sysr.rid);if(p){pend.delete(d.sysr.rid);d.sysr.ok?p.ok(d.sysr.result):p.no(new Error(d.sysr.error))}return}
+ if(d.prefs){S.prefs=d.prefs;return}
+ if(d.ui){S.ui=d.ui;return}
+ if(d.startup){S.startup=d.startup;return}
+ if(d.imported){if(window.__st)window.__st.textContent='Saved '+d.imported+' to Downloads';return}
+ if(d.state){S={...S,...d.state};const u=S.user,m=document.getElementById('me');m.replaceChildren();const a=$('span','neo-avatar',(u.displayName||'?')[0]);const t=$('div');t.append($('b','',u.displayName),$('small','muted','@'+u.username));m.append(a,t);show()}});
+nav();
 </script>

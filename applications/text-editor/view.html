@@ -1,0 +1,86 @@
+<style>
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;gap:1px;background:var(--neo-surface-3);overflow-x:auto;flex:none;min-height:30px}
+.tab{display:flex;align-items:center;gap:6px;padding:0 6px 0 12px;background:var(--neo-surface-2);cursor:default;white-space:nowrap;max-width:200px}.tab.on{background:var(--neo-surface-1);font-weight:600}
+.tab .t{overflow:hidden;text-overflow:ellipsis}.tab button{border:0;background:none;width:18px;height:18px;padding:0;color:inherit}.tab button:hover{background:var(--neo-hover)}
+.find{display:none;gap:6px;align-items:center;padding:4px 8px;background:var(--neo-surface-0);border-bottom:1px solid var(--neo-border);flex-wrap:wrap}.find.on{display:flex}.find input[type=text]{width:170px}
+.saveas{display:none;gap:6px;align-items:center;padding:4px 8px;background:var(--neo-surface-0);border-bottom:1px solid var(--neo-border)}.saveas.on{display:flex}.saveas input{flex:1}
+.ed{flex:1;min-height:0;display:flex;background:var(--neo-surface-1)}
+.gut{flex:none;min-width:44px;padding:10px 8px 10px 4px;text-align:right;color:var(--neo-text-muted);font:var(--fs,14px)/1.5 var(--neo-font-mono);overflow:hidden;white-space:pre;border-right:1px solid var(--neo-hairline);user-select:none}
+.pane{flex:1;min-width:0;position:relative}
+textarea{position:absolute;inset:0;width:100%;height:100%;border:0;resize:none;padding:10px 12px;background:transparent;color:var(--neo-text);font:var(--fs,14px)/1.5 var(--neo-font-mono);outline:none;tab-size:4;white-space:pre;overflow:auto;display:none}textarea.on{display:block}
+textarea.wrap{white-space:pre-wrap;word-break:break-word}
+.sp{flex:1}.statusbar button{border:0;background:none;color:inherit;padding:0 6px}.statusbar button:hover{background:var(--neo-hover)}
+</style>
+<nav class="neo-toolbar">
+ <button id="bNew" class="neo-btn neo-btn--ghost neo-btn--sm" title="New (Ctrl+N)">New</button><button id="bOpen" class="neo-btn neo-btn--ghost neo-btn--sm" title="Open (Ctrl+O)">Open…</button>
+ <button id="bSave" class="neo-btn neo-btn--primary neo-btn--sm" title="Save (Ctrl+S)">Save</button><button id="bAs" class="neo-btn neo-btn--ghost neo-btn--sm" title="Save as (Ctrl+Shift+S)">Save as…</button>
+ <span class="sp"></span>
+ <button id="bFind" class="neo-btn neo-btn--ghost neo-btn--sm" title="Find and replace (Ctrl+F)">Find</button><button id="bGo" class="neo-btn neo-btn--ghost neo-btn--sm" title="Go to line (Ctrl+G)">Go to line</button>
+ <button id="bWrap" class="neo-btn neo-btn--ghost neo-btn--sm" title="Word wrap">Wrap</button><button id="bMinus" class="neo-btn neo-btn--ghost neo-btn--sm" title="Smaller text">A−</button><button id="bPlus" class="neo-btn neo-btn--ghost neo-btn--sm" title="Larger text">A+</button>
+</nav>
+<div class="tabs" id="tabs"></div>
+<div class="find" id="find"><input id="fq" type="text" class="neo-input" placeholder="Find" aria-label="Find"><input id="fr" type="text" class="neo-input" placeholder="Replace with" aria-label="Replace with">
+ <label><input type="checkbox" id="fc"> Match case</label><button id="fprev" class="neo-btn neo-btn--sm">Prev</button><button id="fnext" class="neo-btn neo-btn--sm">Next</button><button id="frep" class="neo-btn neo-btn--sm">Replace</button><button id="fall" class="neo-btn neo-btn--sm">Replace all</button><span id="fcount" class="u-muted"></span><button id="fclose" class="neo-btn neo-btn--ghost neo-btn--sm" aria-label="Close find">×</button></div>
+<div class="saveas" id="saveas"><span>Save as:</span><input id="sp" type="text" class="neo-input" aria-label="File path"><button id="sok" class="neo-btn neo-btn--primary neo-btn--sm">Save</button><button id="scancel" class="neo-btn neo-btn--sm">Cancel</button></div>
+<div class="ed"><div class="gut" id="gut">1</div><div class="pane" id="pane"></div></div>
+<footer class="neo-statusbar statusbar"><span id="pos">Ln 1, Col 1</span><span><button id="eol" title="Toggle line endings">LF</button><span id="msg"></span></span></footer>
+<script>
+const $=id=>document.getElementById(id),post=m=>neoWindow.postMessage(m);
+let tabs=[],cur=null,nid=1,home='',docs='',fs=14,wrap=false;
+const dirname=p=>p.slice(0,p.lastIndexOf('/'))||'/';
+function sendDirty(){post({dirty:tabs.filter(t=>t.dirty).length})}
+function newTab(o={}){const ta=document.createElement('textarea');ta.spellcheck=false;ta.value=o.text||'';const t={id:nid++,path:o.path||null,name:o.name||'Untitled.txt',ta,eol:o.eol||'LF',dirty:!!o.dirty,saved:ta.value};
+ ta.addEventListener('input',()=>{t.dirty=ta.value!==t.saved;draw();upd()});ta.addEventListener('scroll',()=>{$('gut').scrollTop=ta.scrollTop});
+ ta.addEventListener('click',upd);ta.addEventListener('keyup',upd);
+ ta.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const s=ta.selectionStart;ta.setRangeText('    ',s,ta.selectionEnd,'end');ta.dispatchEvent(new Event('input'))}
+  else if(e.key==='Enter'&&!e.ctrlKey&&!e.metaKey){const v=ta.value,s=ta.selectionStart,ls=v.lastIndexOf('\n',s-1)+1,ind=/^[ \t]*/.exec(v.slice(ls,s))[0];e.preventDefault();ta.setRangeText('\n'+ind,s,ta.selectionEnd,'end');ta.dispatchEvent(new Event('input'))}});
+ $('pane').append(ta);tabs.push(t);select(t);return t}
+function select(t){cur=t;tabs.forEach(x=>x.ta.classList.toggle('on',x===t));draw();upd();t.ta.focus()}
+function closeTab(t){if(t.dirty&&!confirmClose(t))return;t.ta.remove();tabs=tabs.filter(x=>x!==t);if(!tabs.length)newTab();else if(cur===t)select(tabs[tabs.length-1]);draw();sendDirty()}
+function confirmClose(t){return t._armed?true:(t._armed=true,say(`"${t.name}" has unsaved changes. Press × again to discard.`),setTimeout(()=>t._armed=false,3000),false)}
+function draw(){$('tabs').replaceChildren(...tabs.map(t=>{const d=document.createElement('div');d.className='tab'+(t===cur?' on':'');const s=document.createElement('span');s.className='t';s.textContent=(t.dirty?'● ':'')+t.name;s.title=t.path||'Unsaved';
+  const x=document.createElement('button');x.textContent='×';x.setAttribute('aria-label','Close '+t.name);x.onclick=e=>{e.stopPropagation();closeTab(t)};d.onclick=()=>select(t);d.append(s,x);return d}));
+ $('eol').textContent=cur.eol;gutter();sendDirty()}
+function gutter(){if(wrap){$('gut').style.display='none';return}$('gut').style.display='';const n=cur.ta.value.split('\n').length;let s='';for(let i=1;i<=n;i++)s+=i+'\n';$('gut').textContent=s;$('gut').scrollTop=cur.ta.scrollTop}
+function upd(){const ta=cur.ta,v=ta.value.slice(0,ta.selectionStart).split('\n');$('pos').textContent=`Ln ${v.length}, Col ${v[v.length-1].length+1} · ${ta.value.length} chars`;gutter()}
+function say(t){$('msg').textContent=' '+t;clearTimeout(say.t);say.t=setTimeout(()=>$('msg').textContent='',4000)}
+/* files */
+function load(f){const crlf=f.text.includes('\r\n'),text=f.text.replace(/\r\n/g,'\n');const ex=tabs.find(t=>t.path===f.path);
+ if(ex&&!ex.dirty){ex.ta.value=text;ex.saved=text;ex.eol=crlf?'CRLF':'LF';select(ex);return}
+ if(tabs.length===1&&!tabs[0].path&&!tabs[0].dirty&&!tabs[0].ta.value){tabs[0].ta.remove();tabs=[]}
+ newTab({path:f.path,name:f.name,text,eol:crlf?'CRLF':'LF'})}
+function save(t,as){if(!t.path||as){showSaveAs(t);return}const content=t.eol==='CRLF'?t.ta.value.replace(/\n/g,'\r\n'):t.ta.value;post({save:{id:t.id,path:t.path,content}})}
+function showSaveAs(t){$('saveas').classList.add('on');$('sp').value=t.path||((docs||home).replace(/\/$/,'')+'/'+t.name);$('sp').focus();$('sp').select();$('saveas')._t=t}
+$('sok').onclick=()=>{const t=$('saveas')._t,p=$('sp').value.trim();if(!p.startsWith('/')){say('Enter an absolute path, e.g. /home/me/notes.txt');return}t.path=p;t.name=p.slice(p.lastIndexOf('/')+1);$('saveas').classList.remove('on');save(t,false);draw()};
+$('scancel').onclick=()=>{$('saveas').classList.remove('on');cur.ta.focus()};
+$('sp').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')e.preventDefault();if(e.key==='Enter')$('sok').click();if(e.key==='Escape')$('scancel').click()};
+/* find */
+function matches(){const q=$('fq').value;if(!q)return[];const v=cur.ta.value,cs=$('fc').checked,h=cs?v:v.toLowerCase(),n=cs?q:q.toLowerCase(),out=[];let i=0;while((i=h.indexOf(n,i))>=0){out.push(i);i+=Math.max(1,n.length)}return out}
+function findNext(dir){const m=matches(),ta=cur.ta;$('fcount').textContent=m.length+' found';if(!m.length)return false;const len=$('fq').value.length;
+ let pos=dir>0?m.find(i=>i>=ta.selectionEnd):[...m].reverse().find(i=>i<ta.selectionStart);if(pos==null)pos=dir>0?m[0]:m[m.length-1];
+ ta.focus();ta.setSelectionRange(pos,pos+len);const line=ta.value.slice(0,pos).split('\n').length;ta.scrollTop=Math.max(0,(line-3)*fs*1.5);upd();return true}
+function replaceOne(){const ta=cur.ta,q=$('fq').value,sel=ta.value.slice(ta.selectionStart,ta.selectionEnd);if(q&&($('fc').checked?sel===q:sel.toLowerCase()===q.toLowerCase())){ta.setRangeText($('fr').value,ta.selectionStart,ta.selectionEnd,'end');ta.dispatchEvent(new Event('input'))}findNext(1)}
+function replaceAll(){const m=matches();if(!m.length){$('fcount').textContent='0 found';return}const q=$('fq').value,r=$('fr').value,ta=cur.ta;let v=ta.value,out='',last=0;for(const i of m){out+=v.slice(last,i)+r;last=i+q.length}out+=v.slice(last);ta.value=out;ta.dispatchEvent(new Event('input'));$('fcount').textContent=m.length+' replaced'}
+function openFind(){$('find').classList.add('on');const s=cur.ta.value.slice(cur.ta.selectionStart,cur.ta.selectionEnd);if(s&&!s.includes('\n'))$('fq').value=s;$('fq').focus();$('fq').select()}
+$('fnext').onclick=()=>findNext(1);$('fprev').onclick=()=>findNext(-1);$('frep').onclick=replaceOne;$('fall').onclick=replaceAll;$('fclose').onclick=()=>{$('find').classList.remove('on');cur.ta.focus()};
+$('fq').oninput=()=>{$('fcount').textContent=matches().length+' found'};
+$('fq').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')e.preventDefault();if(e.key==='Enter')findNext(e.shiftKey?-1:1);if(e.key==='Escape')$('fclose').click()};$('fr').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')replaceOne();if(e.key==='Escape')$('fclose').click()};
+function jump(n){const lines=cur.ta.value.split('\n');n=Math.max(1,Math.min(lines.length,n|0));let pos=0;for(let i=0;i<n-1;i++)pos+=lines[i].length+1;cur.ta.focus();cur.ta.setSelectionRange(pos,pos+lines[n-1].length);cur.ta.scrollTop=Math.max(0,(n-3)*fs*1.5);upd()}
+/* toolbar */
+$('bNew').onclick=()=>newTab();$('bOpen').onclick=()=>post({open:true});$('bSave').onclick=()=>save(cur,false);$('bAs').onclick=()=>save(cur,true);$('bFind').onclick=openFind;
+$('bGo').onclick=()=>{$('find').classList.add('on');$('fq').blur();$('fr').value='';$('fr').placeholder='Line number, then Enter';$('fr')._go=true;$('fr').focus()};
+const oldFr=$('fr').onkeydown;$('fr').onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')e.preventDefault();if($('fr')._go){if(e.key==='Enter'){jump(parseInt($('fr').value,10)||1);$('fr')._go=false;$('fr').placeholder='Replace with';$('fr').value='';$('find').classList.remove('on')}else if(e.key==='Escape'){$('fr')._go=false;$('fr').placeholder='Replace with';$('fclose').click()}return}oldFr(e)};
+$('bWrap').onclick=e=>{wrap=!wrap;tabs.forEach(t=>t.ta.classList.toggle('wrap',wrap));e.currentTarget.classList.toggle('is-active',wrap);gutter()};
+const setFs=d=>{fs=Math.max(9,Math.min(32,fs+d));document.documentElement.style.setProperty('--fs',fs+'px');gutter()};$('bMinus').onclick=()=>setFs(-1);$('bPlus').onclick=()=>setFs(1);
+$('eol').onclick=()=>{cur.eol=cur.eol==='LF'?'CRLF':'LF';cur.dirty=true;draw()};
+addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase();
+ if(k==='s'){e.preventDefault();save(cur,e.shiftKey)}else if(k==='o'){e.preventDefault();post({open:true})}else if(k==='n'){e.preventDefault();newTab()}else if(k==='w'){e.preventDefault();closeTab(cur)}else if(k==='f'||k==='h'){e.preventDefault();openFind()}else if(k==='g'){e.preventDefault();$('bGo').click()}
+ else if(e.key==='='||e.key==='+'){e.preventDefault();setFs(1)}else if(e.key==='-'){e.preventDefault();setFs(-1)}});
+neoWindow.onMessage(m=>{
+ if(m.init){home=m.init.home;docs=m.init.documents;return}
+ if(m.loaded){load(m.loaded);return}
+ if(m.saved){const t=tabs.find(x=>x.id===m.saved.id);if(t){t.saved=t.ta.value;t.dirty=false;t.path=m.saved.path;t.name=m.saved.name;draw();say('Saved '+t.path)}return}
+ if(m.error)say(m.error)});
+newTab();
+</script>

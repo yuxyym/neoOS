@@ -1,0 +1,18 @@
+{
+  "id": "org.neoos.pdf-viewer",
+  "name": "PDF Viewer",
+  "version": "1.0.0",
+  "description": "Read PDF documents with the built-in Chromium viewer",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "minApiVersion": "1.0",
+  "categories": ["Office", "Productivity"],
+  "permissions": ["browser", "host.open", "fs.read:~/*"],
+  "network": [],
+  "instance": "multi",
+  "autostart": false,
+  "exitWhenLastWindowCloses": true,
+  "associations": ["application/pdf"],
+  "intents": [],
+  "contributes": {}
+}

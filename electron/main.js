@@ -87,7 +87,7 @@ handle('pty:kill', (e, id) => pty.kill(id));
 /* ---- built-in web browser: real Chromium views (WebContentsView), so no iframe / X-Frame-Options / CORS limits ---- */
 const BROWSER_PARTITION = 'persist:neoos-browser'; // separate cookie jar and storage, isolated from neoOS itself
 const views = new Map(); let nextViewId = 1, browserSessionReady = false;
-const webUrl = u => { try { const p = new URL(String(u)); return p.protocol === 'https:' || p.protocol === 'http:'; } catch { return false; } };
+const webUrl = u => { try { const p = new URL(String(u)); return p.protocol === 'https:' || p.protocol === 'http:' || p.protocol === 'file:' || p.protocol === 'about:'; } catch { return false; } };
 function viewState(v) {
   const wc = v.webContents, h = wc.navigationHistory || wc;
   return { url: wc.getURL(), title: wc.getTitle(), loading: wc.isLoading(), canBack: h.canGoBack(), canForward: h.canGoForward() };

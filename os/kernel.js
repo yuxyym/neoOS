@@ -1,6 +1,6 @@
-// Kernel: app registry, process table, syscall table, permission checks, bridge.
-// Each app's `main` runs in a hidden sandboxed iframe (opaque origin). The kernel loads all files itself.
-// Host integration (real file system, terminal, system info) goes through os/host.js and is reachable only via permission-checked syscalls.
+// Kernel: app registry (built by scanning /applications), process table, syscall table, permission checks, bridge.
+// Every app's `main` runs in its own Node.js subprocess (Electron utility process, see electron/procs.js + electron/proc-host.js).
+// The kernel (this file, in the renderer) keeps the syscall table and relays messages to and from those subprocesses.
 import * as wm from './wm.js';
 import * as vfs from './vfs.js';
 import * as host from './host.js';
@@ -16,13 +16,13 @@ export const journal = [];
 export function log(level, src, msg) { journal.push({ t: Date.now(), level, src, msg }); if (journal.length > 500) journal.shift(); }
 
 export const registry = new Map(), procs = new Map();
-let nextPid = 1, sdk, shim, css;
+let nextPid = 1, shim, css;
 export let currentUser = null;
 let theme = 'metro';
 const t = u => fetch(u).then(r => { if (!r.ok) throw new NeoError('ENOENT', 'Cannot load ' + u); return r.text(); });
 const esc = s => s.replace(/<\/script/gi, '<\\/script');
 async function inlineAppAssets(base, html) {
-  // Opaque-origin app frames cannot safely resolve package-relative files. The
+  // Opaque-origin window frames cannot safely resolve package-relative files. The
   // kernel loads trusted package assets and embeds them before the frame starts.
   const replace = async (tag, attr, type) => {
     const re = new RegExp(`<${tag}\\b([^>]*?)\\b${attr}=["']([^"']+)["']([^>]*)>`, 'gi');
@@ -56,18 +56,30 @@ function validateManifest(m) {
   return { ...m, exitWhenLastWindowCloses: m.exitWhenLastWindowCloses !== false };
 }
 
+// App discovery: every folder in /applications with a manifest.json is an app. New folders are picked up by later scans; nothing is ever removed mid-session.
+const badDirs = new Set();
+export async function scanApps() {
+  let added = 0;
+  for (const found of await host.call('host:apps')) {
+    if (found.error) { if (!badDirs.has(found.dir)) { badDirs.add(found.dir); log('error', 'init', `bad app ${found.dir}: ${found.error}`); } continue; }
+    try {
+      const manifest = validateManifest(found.manifest);
+      if (registry.has(manifest.id)) continue;
+      registry.set(manifest.id, { manifest, base: `applications/${found.dir}/`, dir: found.dir }); added++; badDirs.delete(found.dir);
+    } catch (e) { if (!badDirs.has(found.dir)) { badDirs.add(found.dir); log('error', 'init', `bad app ${found.dir}: ${e.message}`); } }
+  }
+  return added;
+}
+
 // Terminal sessions: pty id -> owning pid. Output that arrives before the owner is registered is held briefly.
 const ptyOwner = new Map(), ptyBacklog = new Map();
 
 export async function init() {
   await vfs.init();
   document.documentElement.dataset.theme = theme; wm.setTheme(theme);
-  const [idx, a, b, c, r] = await Promise.all([t('os/apps.index.json').then(JSON.parse), t('sdk/neo-sdk.js'), t('sdk/neo-frame.js'), t('neoui/neoui.css'), t('neoui/retro.css')]);
-  [sdk, shim, css] = [a, b, c + '\n' + r];
-  for (const dir of idx) {
-    try { const base = `applications/${dir}/`; const manifest = validateManifest(JSON.parse(await t(base + 'manifest.json'))); registry.set(manifest.id, { manifest, base }); }
-    catch (e) { log('error', 'init', `bad app ${dir}: ${e.message}`); }
-  }
+  const [a, c, r] = await Promise.all([t('sdk/neo-frame.js'), t('neoui/neoui.css'), t('neoui/retro.css')]);
+  [shim, css] = [a, c + '\n' + r];
+  await scanApps();
   host.on('pty:data', (id, data) => {
     const p = procs.get(ptyOwner.get(id));
     if (p) send(p, 'pty:data', { id, data }); else (ptyBacklog.get(id) || ptyBacklog.set(id, []).get(id)).push(data);
@@ -75,6 +87,8 @@ export async function init() {
   host.on('pty:exit', (id, code) => { const p = procs.get(ptyOwner.get(id)); ptyOwner.delete(id); ptyBacklog.delete(id); p && send(p, 'pty:exit', { id, code }); });
   host.on('browser:state', (id, st) => { const v = bviews.get(id), p = v && procs.get(v.pid); p && send(p, 'browser:state', { id, ...st }); });
   host.on('browser:focus', id => { const v = bviews.get(id); v && wm.focus(v.w); });
+  host.on('proc:msg', (pid, m) => { const p = procs.get(pid); p && handle(p, m); });
+  host.on('proc:exit', (pid, code) => { const p = procs.get(pid); if (!p) return; log(code ? 'warn' : 'info', p.appId, `process ${pid} exited (${code})`); kill(pid); });
   wm.hooks.onClose = w => { dropWindowViews(w.id); const p = procs.get(w.pid); if (!p) return; p.windows.delete(w.id); send(p, 'window:close', { wid: w.id });
     if (!p.windows.size && p.manifest.exitWhenLastWindowCloses !== false) setTimeout(() => kill(p.pid), 30); };
   wm.hooks.onMessage = (w, data) => { const p = procs.get(w.pid); p && send(p, 'window:message', { wid: w.id, data }); };
@@ -87,7 +101,7 @@ export async function init() {
     const p = procs.get(w.pid); p && send(p, 'window:remote-message', { wid: w.id, data: e.data });
   });
   wm.hooks.onBeforeClose = w => { const p = procs.get(w.pid); p && send(p, 'window:beforeclose', { wid: w.id }); };
-  log('info', 'init', `${registry.size} apps registered`);
+  log('info', 'init', `${registry.size} apps found in /applications`);
 }
 
 export async function setCurrentUser(user) {
@@ -139,7 +153,9 @@ function wallpaperData(file, path) { // returns a data: URL (also used for previ
   return null;
 }
 
-export const send = (p, event, payload) => p.port.postMessage({ event, payload });
+// Messages to an app subprocess go over the fire-and-forget host channel.
+const post = (p, msg) => host.post('proc:send', p.pid, msg);
+export const send = (p, event, payload) => post(p, { event, payload });
 
 export async function launch(ref, args = {}) {
   if (!currentUser) throw new NeoError('EACCES', 'Sign in before launching apps');
@@ -151,15 +167,12 @@ export async function launch(ref, args = {}) {
     const p = [...procs.values()].find(p => p.appId === m.id);
     if (p) { send(p, 'activate', args); const w = wm.list().find(w => w.pid === p.pid); w && wm.focus(w); return p.pid; }
   }
-  const main = await t(app.base + m.main);
   const proc = { pid: nextPid++, appId: m.id, manifest: m, base: app.base, user: currentUser, windows: new Set(), started: Date.now(), tokens: 200, last: Date.now() };
-  const f = proc.frame = document.createElement('iframe');
-  f.sandbox = 'allow-scripts'; f.hidden = true; f.title = m.name;
-  f.srcdoc = `<!doctype html><script>${esc(sdk)}<\/script><script>${esc(main)}<\/script>`;
-  const ch = new MessageChannel(); proc.port = ch.port1;
-  ch.port1.onmessage = e => handle(proc, e.data);
-  f.onload = () => { f.contentWindow.postMessage({ neo: 'hello', pid: proc.pid, manifest: m, theme }, '*', [ch.port2]); send(proc, 'launch', args); };
-  procs.set(proc.pid, proc); document.body.append(f);
+  procs.set(proc.pid, proc);
+  try { await host.call('proc:spawn', { pid: proc.pid, dir: app.dir, main: m.main }); }
+  catch (e) { procs.delete(proc.pid); throw e; }
+  post(proc, { neo: 'hello', pid: proc.pid, manifest: m, theme });
+  send(proc, 'launch', args);
   log('info', 'kernel', `spawn pid ${proc.pid} ${m.id}`); bus.emit('process:start', proc.pid);
   return proc.pid;
 }
@@ -169,7 +182,7 @@ export function kill(pid) {
   dropViewsOf(pid);
   for (const [id, owner] of ptyOwner) if (owner === pid) { ptyOwner.delete(id); host.call('pty:kill', id).catch(() => {}); }
   [...p.windows].forEach(id => { const w = wm.get(id); w && wm.close(w, true); });
-  p.frame.remove(); p.port.close();
+  host.post('proc:kill', pid);
   log('info', 'kernel', `exit pid ${pid}`); bus.emit('process:exit', pid); wm.hooks.onChange?.(); return true;
 }
 
@@ -182,6 +195,7 @@ const storeKey = (p, k) => `neoos.appdata.${p.user.id}.${p.appId}.${String(k).sl
 
 // Native browser views (Electron WebContentsView) float above the DOM. The kernel keeps each one glued to the body of its
 // owning window and hides it while it is covered by another window, a menu, the launcher or a dialog.
+// Bounds are sent in window DIPs, so they are multiplied by the interface zoom (window.__neoZoom, set by os/desktop-extras.js).
 const bviews = new Map(); let bframe = 0;
 const zOf = w => parseFloat(w.el.style.zIndex) || 0;
 const ownView = (p, id) => { const v = bviews.get(id); if (!v || v.pid !== p.pid) throw new NeoError('EPERM', 'No such browser view'); return id; };
@@ -189,14 +203,16 @@ function dropView(id) { if (bviews.delete(id)) host.call('browser:destroy', id).
 function dropViewsOf(pid) { [...bviews].forEach(([id, v]) => v.pid === pid && dropView(id)); }
 function dropWindowViews(wid) { [...bviews].forEach(([id, v]) => v.w.id === wid && dropView(id)); }
 const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+export function activeWindowIsEmbedded() { const w = wm.get(wm.activeId()); return !!w && (!!w.remoteOrigin || [...bviews.values()].some(v => v.w === w)); }
 function syncViews() {
-  const overlay = !!document.querySelector('.neo-launcher,.neo-ctx,.neo-lock,[role=alertdialog],[role=dialog]');
+  const overlay = !!document.querySelector('.neo-launcher,.neo-ctx,.neo-lock,[role=alertdialog],[role=dialog]'), zoom = window.__neoZoom || 1;
   for (const [id, v] of bviews) {
     const w = v.w, r = w.el.querySelector('.neo-win__body').getBoundingClientRect(), inset = 4; // inset keeps the window resize handles usable
-    const b = { x: Math.round(r.left + inset), y: Math.round(r.top + v.top), width: Math.max(0, Math.round(r.width - 2 * inset)), height: Math.max(0, Math.round(r.height - v.top - inset)) };
-    const box = { left: b.x, top: b.y, right: b.x + b.width, bottom: b.y + b.height };
+    const c = { x: r.left + inset, y: r.top + v.top, width: Math.max(0, r.width - 2 * inset), height: Math.max(0, r.height - v.top - inset) };
+    const box = { left: c.x, top: c.y, right: c.x + c.width, bottom: c.y + c.height };
     let visible = !overlay && !w.min && !w.el.hidden && !w.el.classList.contains('is-closing') && !w.el.classList.contains('is-minimizing');
     if (visible) for (const o of wm.list()) if (o !== w && !o.min && !o.el.hidden && zOf(o) > zOf(w) && hit(box, o.el.getBoundingClientRect())) { visible = false; break; }
+    const b = { x: Math.round(c.x * zoom), y: Math.round(c.y * zoom), width: Math.round(c.width * zoom), height: Math.round(c.height * zoom) };
     const key = [b.x, b.y, b.width, b.height, visible].join();
     if (key !== v.last) { v.last = key; host.call('browser:bounds', id, { ...b, visible }).catch(() => {}); }
   }
@@ -263,6 +279,7 @@ const S = {
   'app.getManifest': { fn: p => p.manifest },
   'app.readAsset': { fn: async (p, path) => { const f = String(path || ''); if (!f || f.startsWith('/') || f.split(/[\\/]/).includes('..')) throw new NeoError('EINVAL', 'App asset path must be package-relative'); const response = await fetch(p.base + f); if (!response.ok) throw new NeoError('ENOENT', 'App asset not found'); return new Uint8Array(await response.arrayBuffer()); } },
   'app.list': { fn: () => [...registry.values()].map(a => a.manifest) },
+  'app.rescan': { fn: () => scanApps() },
   'app.launch': { scope: 'app.launch', fn: (p, ref, args) => launch(ref, args) },
   'process.self': { fn: p => ({ pid: p.pid, appId: p.appId }) },
   'process.list': { scope: 'process.list', fn: () => [...procs.values()].map(p => ({ pid: p.pid, appId: p.appId, name: p.manifest.name, windows: p.windows.size, started: p.started, state: 'running' })) },
@@ -311,7 +328,7 @@ const S = {
   'window.close': { fn: (p, id) => wm.close(own(p, id)) },
   'window.postMessage': { fn: (p, id, d) => { const w = own(p, id); if (w.remoteOrigin) w.frame.contentWindow.postMessage(d, w.remoteOrigin); else w.port.postMessage(d); } },
 };
-// Manifest scope `fs.read:~/*` / `fs.write:~/*` now covers the whole host file system; narrower scopes such as `fs.read:~/home/me/Documents/*` also work.
+// Manifest scope `fs.read:~/*` / `fs.write:~/*` covers the whole host file system; narrower scopes such as `fs.read:~/home/me/Documents/*` also work.
 function requireFs(proc, op, path) {
   const normalized = vfs.normalize(path), need = `${op}:~${normalized}`;
   if (!allowed(proc.manifest.permissions || [], need)) throw new NeoError('EACCES', `Missing permission: ${need}`);
@@ -334,5 +351,5 @@ async function handle(proc, m) {
     log('warn', proc.appId, `${key} -> ${res.error.code}`);
   }
   log('debug', proc.appId, `${key} ${(performance.now() - t0).toFixed(1)}ms`);
-  if (procs.has(proc.pid)) proc.port.postMessage(res);
+  if (procs.has(proc.pid)) post(proc, res);
 }

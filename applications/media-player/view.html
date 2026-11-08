@@ -1,0 +1,8 @@
+<style>body{height:100vh;overflow:hidden}.bar{display:flex;align-items:center;gap:6px;height:44px;padding:0 8px;background:var(--neo-surface-0);border-bottom:1px solid var(--neo-border)}.bar select{flex:1;min-width:0}.msg{display:grid;place-items:center;height:calc(100vh - 44px)}</style>
+<div class="bar"><button id="o" class="neo-btn neo-btn--sm">Open…</button><button id="p" class="neo-btn neo-btn--icon" title="Previous" aria-label="Previous" disabled>&#9198;</button><button id="n" class="neo-btn neo-btn--icon" title="Next" aria-label="Next" disabled>&#9197;</button><select id="l" class="neo-input" aria-label="Files in this folder" disabled></select></div>
+<div class="msg u-muted" id="m">Choose an audio or video file with “Open…”</div>
+<script>
+const $=id=>document.getElementById(id),send=m=>neoWindow.postMessage(m);
+$('o').onclick=()=>send({open:true});$('p').onclick=()=>send({step:-1});$('n').onclick=()=>send({step:1});$('l').onchange=()=>send({pick:+$('l').value});
+neoWindow.onMessage(m=>{if(!m.files)return;$('l').replaceChildren(...m.files.map((f,i)=>{const o=document.createElement('option');o.value=i;o.textContent=f.name;return o}));$('l').value=m.index;$('l').disabled=$('p').disabled=$('n').disabled=m.files.length<2;$('m').textContent='Loading…'});
+</script>
