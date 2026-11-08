@@ -10,7 +10,6 @@
     "session": "electron . --session",
     "install-session": "node tools/install-session.mjs",
     "lint": "node tools/lint-bootstrap.mjs",
-    "postinstall": "node tools/setup-pty.mjs",
     "dist": "electron-builder"
   },
   "devDependencies": {

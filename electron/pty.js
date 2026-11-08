@@ -4,7 +4,7 @@ const fs = require('node:fs'), os = require('node:os');
 const { spawn } = require('node:child_process');
 const { StringDecoder } = require('node:string_decoder');
 let lib = null;
-for (const name of ['@homebridge/node-pty-prebuilt-multiarch', 'node-pty']) { try { lib = require(name); break; } catch {} }
+try { lib = require('node-pty'); } catch (e) { console.warn('[neoOS] node-pty unavailable:', e.message); }
 const isWin = process.platform === 'win32';
 const sessions = new Map(); let nextId = 1;
 const shq = s => "'" + String(s).replace(/'/g, "'\\''") + "'";
